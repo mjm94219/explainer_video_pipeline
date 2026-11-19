@@ -33,7 +33,7 @@
     "description": "Ultra-high definition 16:9 widescreen landscape for premium desktop YouTube technical deep dives",
     "aspect_ratio": "16:9",
     "resolution_tier": "4K",
-    "fps": 60,
+    "fps": 30,
     "languages": [
       "en"
     ],
