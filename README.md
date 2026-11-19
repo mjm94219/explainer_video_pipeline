@@ -307,7 +307,3 @@ I developed and tested this on Windows. The steps are the same elsewhere; only t
 - **Ollama errors:** make sure Ollama is running and that `ollama pull qwen2.5:14b` finished.
 - **Subtitles too small or too big:** change `SUBTITLE_FONT_SCALE` in `config.py` and delete the files in `Subtitles\`.
 - **Voice sounds cut off or wrong:** delete that scene's `.wav` and `.ass` files and run again with `-R`.
-
-## Licences and credits
-
-This pipeline only drives other people's tools and models. Each has its own licence, so check them before you monetize a video: Ollama and the `qwen2.5` model, Kokoro, faster-whisper, ComfyUI, Stable Diffusion XL (its model licence), Playwright, FFmpeg and PyTorch.
