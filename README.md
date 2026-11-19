@@ -200,7 +200,14 @@ Scene 4: how a hard drive stores bits as magnets (use magnetic_platter).
 Scene 5: SSD versus hard drive (use flow_cards)." -p Video_Landscape_1080p_16x9 -l en
 ```
 
-If the -t (topic) says "Exactly 5 scenes.", the planner follows that scene count; otherwise it picks 4 to 6. You can give a scene its own background with a line like `Scene 2 Image: a laptop on a desk` in the topic, and name an animation for a scene (flow, compare, steps, stat, bits, cells, ring).
+**How the topic text works**
+
+- **Scene count:** if the topic says "Exactly 5 scenes.", the planner follows that count. Otherwise it picks 4 to 6 scenes.
+- **Scene details:** you can describe each scene on its own line ("Scene 1: ..."). The planner uses these lines to write the narration and on-screen text.
+- **Backgrounds:** an `Image:` line gives that scene its own background picture. It applies to the most recent "Scene N" before it, so it can sit on the same line (`Scene 2 Image: a laptop on a desk`) or on the line below, as in the example above.
+- **Animations:** you can suggest an animation for a scene with "(use ...)". The planner picks from the animations in `blocks.html`: `flow`, `compare`, `steps`, `stat`, `bits`, `cells` and `ring`. A name that is not in that list (for example `power_flow` in the example above) is replaced with `flow`, so use the names above when you want a specific one.
+
+Tip: ask the free tier of Claude, ChatGPT or Gemini to write a detailed topic for you, with the scene count, one line per scene and an `Image:` line for each background. Paste the result into `-t` and Ollama will plan the scenes from it.
 
 **Resume or rebuild an existing project**
 
