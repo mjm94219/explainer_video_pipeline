@@ -1,0 +1,52 @@
+{
+  "Video_Portrait_1080p_9x16": {
+    "description": "Vertical 9:16 portrait optimized for YouTube Shorts and TikTok mobile UI rails",
+    "aspect_ratio": "9:16",
+    "resolution_tier": "1080p",
+    "fps": 60,
+    "languages": [
+      "en"
+    ],
+    "music": null
+  },
+  "Video_Landscape_1080p_16x9": {
+    "description": "Standard 16:9 widescreen landscape for desktop YouTube technical deep dives",
+    "aspect_ratio": "16:9",
+    "resolution_tier": "1080p",
+    "fps": 30,
+    "languages": [
+      "en"
+    ],
+    "music": null
+  },
+  "Video_Landscape_720p_16x9": {
+    "description": "Standard 16:9 widescreen landscape in 720p for faster rendering and smaller file sizes",
+    "aspect_ratio": "16:9",
+    "resolution_tier": "720p",
+    "fps": 30,
+    "languages": [
+      "en"
+    ],
+    "music": null
+  },
+  "Video_Landscape_4K_16x9": {
+    "description": "Ultra-high definition 16:9 widescreen landscape for premium desktop YouTube technical deep dives",
+    "aspect_ratio": "16:9",
+    "resolution_tier": "4K",
+    "fps": 60,
+    "languages": [
+      "en"
+    ],
+    "music": null
+  },
+  "Video_Square_1080p_1x1": {
+    "description": "1:1 square canvas for Instagram feed carousels and LinkedIn clips",
+    "aspect_ratio": "1:1",
+    "resolution_tier": "1080p",
+    "fps": 30,
+    "languages": [
+      "en"
+    ],
+    "music": null
+  }
+}

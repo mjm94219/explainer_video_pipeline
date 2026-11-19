@@ -1,0 +1,443 @@
+<!doctype html>
+<!-- Animation blocks for EXPLAINER videos (flow, compare, steps, stat, bits, cells, ring). One page, many looks: each scene picks a block and fills it in with JSON
+     (Scripts\onscreen_sNN.json). No code per topic. Everything is driven by setTime(t) (seconds) so frames are exact.
+     To add a block: add an entry to "blocks" below and a function with the same name in BLOCKS (search "BLOCKS = {"). -->
+<html><head><meta charset="utf-8">
+<script type="application/json" id="animation-meta">
+{
+  "name": "blocks",
+  "blocks": [
+    {
+      "name": "flow",
+      "description": "General-purpose: 3 to 5 labelled cards joined by arrows with a glowing pulse travelling along them. Use for any process, pipeline or path (for example electricity from outlet to CPU, a request through servers, stages of a recipe).",
+      "params": {
+        "labels": "list of 3 to 5 short labels (1 to 3 words each) in the order the narration mentions them",
+        "caption": "short caption shown under the chain (optional)"
+      }
+    },
+    {
+      "name": "compare",
+      "description": "Side-by-side comparison of 2 or 3 things (A versus B), each with a few short points. Use when the narration contrasts options.",
+      "params": {
+        "columns": "list of 2 or 3 objects like {\"name\": \"SSD\", \"points\": [\"fast\", \"no moving parts\"]}, 2 to 4 short points each",
+        "caption": "short caption shown under the columns (optional)"
+      }
+    },
+    {
+      "name": "steps",
+      "description": "A numbered list of 3 to 5 steps revealed one by one, then highlighted in turn. Use for instructions, stages in time order, or a list of reasons.",
+      "params": {
+        "items": "list of 3 to 5 short steps (3 to 7 words each) in order",
+        "caption": "short caption shown under the list (optional)"
+      }
+    },
+    {
+      "name": "stat",
+      "description": "1 to 3 big numbers that count up, each with a label. Use when the narration quotes figures (sizes, speeds, percentages, counts).",
+      "params": {
+        "stats": "list of 1 to 3 objects like {\"value\": \"100\", \"prefix\": \"\", \"suffix\": \"x\", \"label\": \"faster than a hard drive\"}; value must be a plain number",
+        "caption": "short caption shown under the numbers (optional)"
+      }
+    },
+    {
+      "name": "bits",
+      "description": "A smooth electrical wave turning into a square wave and then a scrolling stream of 1s and 0s. Use for digital versus analog signals, binary data or how a computer represents information.",
+      "params": {
+        "bits": "a binary string of 6 to 10 digits, e.g. 01001000",
+        "analog_label": "short label for the electrical signal",
+        "digital_label": "short label for the data stream"
+      }
+    },
+    {
+      "name": "cells",
+      "description": "A row of storage cells being written one by one: a cell holding electrons is a 1, an empty cell is a 0, then a read scan. Use for memory or flash storage (SSD, USB stick, RAM) holding bits.",
+      "params": {
+        "bits": "a binary string of 6 to 10 digits; each 1 is a cell that gets electrons",
+        "one_label": "legend text for a charged cell",
+        "zero_label": "legend text for an empty cell",
+        "write_label": "short label for the write voltage",
+        "read_label": "short label shown while the cells are read"
+      }
+    },
+    {
+      "name": "ring",
+      "description": "A spinning disc with a ring of tiny magnets pointing one way or the other (1 or 0) and a read/write head. Use for hard drives, magnetic storage or anything stored as two opposite directions.",
+      "params": {
+        "bits": "a binary string of 6 to 12 digits shown as magnet directions",
+        "caption": "short heading above the stored data",
+        "one_label": "legend text for a magnet pointing one way",
+        "zero_label": "legend text for a magnet pointing the other way",
+        "head_label": "short label for the read/write head"
+      }
+    }
+  ]
+}
+</script>
+<style>
+  html, body { margin:0; width:100%; height:100%; background:transparent; overflow:hidden; }
+  body { font-family:"Segoe UI",system-ui,sans-serif; color:#fff; }
+  #stage { position:absolute; left:0; top:0; width:100%; display:flex; flex-direction:column; align-items:center;
+           justify-content:center; gap:3vh; }
+  h1 { margin:0; font-size:6.4vh; font-weight:700; text-align:center; text-shadow:0 .4vh 1.6vh rgba(0,0,0,.65); }
+  #content { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:3vh; min-height:0; width:100%; }
+  .row { display:flex; align-items:center; justify-content:center; width:100%; }
+  .card { box-sizing:border-box; padding:1.6vh 1.4vw; border-radius:2vh; text-align:center; font-weight:600;
+          background:rgba(14,22,44,.78); border:.4vh solid var(--c,#4aa8ff); color:#fff;
+          box-shadow:0 0 2.4vh var(--c,#4aa8ff), inset 0 0 1.6vh rgba(255,255,255,.06); }
+  .cap { font-size:3.4vh; color:#e6edf7; text-align:center; text-shadow:0 .3vh 1.2vh rgba(0,0,0,.7); }
+  .link { position:relative; height:.7vh; background:rgba(255,255,255,.28); border-radius:1vh; }
+  .link::after { content:""; position:absolute; right:-.2vh; top:50%; width:1.7vh; height:1.7vh;
+                 border-top:.7vh solid rgba(255,255,255,.7); border-right:.7vh solid rgba(255,255,255,.7);
+                 transform:translateY(-50%) rotate(45deg); }
+  .sp { position:absolute; width:1.3vh; height:1.3vh; margin:-.65vh 0 0 -.65vh; border-radius:50%; background:#cfeaff;
+        box-shadow:0 0 1vh #7cc8ff; }
+  .pulse { position:absolute; width:3vh; height:3vh; margin:-1.5vh 0 0 -1.5vh; border-radius:50%; background:#fff;
+           box-shadow:0 0 2vh 1vh rgba(120,200,255,.9); pointer-events:none; }
+  .pt { font-size:3.2vh; font-weight:500; padding:1vh 1.2vw; margin-top:1.2vh; border-radius:1.4vh;
+        background:rgba(255,255,255,.08); }
+  .num { width:6.4vh; height:6.4vh; border-radius:50%; display:flex; align-items:center; justify-content:center;
+         font-size:3.6vh; font-weight:700; background:var(--c); color:#0b1226; flex:0 0 auto; }
+  svg text { font-family:inherit; }
+</style></head>
+<body><div id="stage"><h1 id="h"></h1><div id="content"></div></div>
+<script>
+const P = Object.assign({block:"flow", heading:"", duration:20, vertical:false, sub_margin:0.16, safe_w:0.88},
+                        window.__PARAMS__ || {});
+const V = !!P.vertical;
+const COLORS = ["#4aa8ff","#2ee6c5","#ffb347","#ff6b9d","#a78bfa"];
+const ease = x => 1 - Math.pow(1 - Math.min(Math.max(x,0),1), 3);
+const clamp = (x,a,b) => Math.min(Math.max(x,a),b);
+const T_IN = 0.6;                                   // title fade-in, seconds
+
+function list(v, dflt, max) {                       // accepts an array or "a, b, c"
+  if (typeof v === "string") v = v.split(/[;,]/);
+  if (!Array.isArray(v)) v = [];
+  v = v.map(x => (x && typeof x === "object") ? x : String(x).trim()).filter(x => x !== "");
+  return (v.length ? v : dflt).slice(0, max);
+}
+function bitsOf(v, dflt, max) {
+  const b = String(v || "").replace(/[^01]/g, "");
+  return (b || dflt).slice(0, max);
+}
+function mk(tag, parent, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const SVGNS = "http://www.w3.org/2000/svg";
+function sv(tag, parent, attrs) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in (attrs || {})) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+const stage = document.getElementById("stage"), content = document.getElementById("content");
+stage.style.height = (100 * (1 - P.sub_margin)) + "%";
+content.style.width = (100 * P.safe_w) + "%";
+document.getElementById("h").textContent = P.heading || "";
+const bob = (t, i, amp = 0.7) => Math.sin(t * 1.6 + i * 1.3) * amp;               // gentle float, in vh
+const sheen = (el, t, i) => {                                                    // light band sweeping across a card
+  const p = ((t * 38 + i * 45) % 170) - 35, base = "rgba(14,22,44,.78)";
+  el.style.backgroundImage = `linear-gradient(110deg, ${base} ${p-18}%, rgba(255,255,255,.16) ${p}%, ${base} ${p+18}%)`;
+};
+const fadeCap = (cap, t, t0) => { if (cap) cap.style.opacity = ease((t - t0) / 0.6); };
+
+const BLOCKS = {
+  // ---------------------------------------------------------------- flow
+  flow() {
+    const labels = list(P.labels, ["First","Second","Third"], 5).map(String), n = labels.length;
+    const chain = mk("div", content, "row"); chain.style.position = "relative";
+    chain.style.flexDirection = V ? "column" : "row";
+    const cards = [], links = [];
+    labels.forEach((t, i) => {
+      const c = mk("div", chain, "card", t); c.style.setProperty("--c", COLORS[i % 5]);
+      c.style.display = "flex"; c.style.alignItems = "center"; c.style.justifyContent = "center";
+      c.style.fontSize = V ? "4.2vh" : "3.6vh"; c.style.minHeight = V ? "11vh" : "16vh";
+      c.style.width = V ? "70%" : "auto"; c.style.flex = V ? "0 0 auto" : "1 1 0";
+      cards.push(c);
+      if (i < n - 1) {
+        const l = mk("div", chain, "link");
+        if (V) { l.style.width = ".7vh"; l.style.height = "6vh"; } else { l.style.flex = "0 0 5vw"; }
+        l.sps = [0, 1, 2].map(() => mk("div", l, "sp"));
+        links.push(l);
+      }
+    });
+    const pulse = mk("div", chain, "pulse");
+    const cap = mk("div", content, "cap", P.caption || "");
+    const STEP = 0.7;
+    return t => {
+      cards.forEach((c, i) => { const k = ease((t - T_IN - i*STEP) / 0.6);
+        c.style.opacity = k; c.style.transform = `translateY(${(1-k)*3 + bob(t, i)*k}vh) scale(${.92+.08*k})`;
+        c.style.boxShadow = `0 0 ${2.2 + 1.2*Math.sin(t*2.2 + i)}vh var(--c), inset 0 0 1.6vh rgba(255,255,255,.06)`; });
+      links.forEach((l, i) => { const k = ease((t - T_IN - (i+.5)*STEP) / 0.5); l.style.opacity = k;
+        l.sps.forEach((d, j) => { const f = (t * 0.7 + j / 3 + i * .2) % 1;      // dots streaming along the connector
+          if (V) { d.style.left = "50%"; d.style.top = (f * 100) + "%"; } else { d.style.top = "50%"; d.style.left = (f * 100) + "%"; }
+          d.style.opacity = k * Math.sin(f * Math.PI); }); });
+      fadeCap(cap, t, T_IN + n*STEP);
+      const t0 = T_IN + n*STEP + 0.3;
+      if (t < t0 || n < 2) { pulse.style.opacity = 0; return; }
+      const seg = 1.1, loop = (n-1)*seg + 0.8, u = ((t - t0) % loop) / seg;
+      const i = Math.min(Math.floor(u), n-2), f = ease(u - i);
+      const cr = chain.getBoundingClientRect(), a = cards[i].getBoundingClientRect(), b = cards[i+1].getBoundingClientRect();
+      const ax = a.left + a.width/2 - cr.left, ay = a.top + a.height/2 - cr.top;
+      const bx = b.left + b.width/2 - cr.left, by = b.top + b.height/2 - cr.top;
+      pulse.style.opacity = u > n-1 ? 0 : 1;
+      pulse.style.left = (ax + (bx-ax)*f) + "px"; pulse.style.top = (ay + (by-ay)*f) + "px";
+      cards.forEach((c, j) => { c.style.filter = ((j===i && f<.5) || (j===i+1 && f>=.5)) ? "brightness(1.35)" : "none"; });
+    };
+  },
+
+  // ---------------------------------------------------------------- compare
+  compare() {
+    let cols = list(P.columns, [{name:"A", points:["point 1","point 2"]}, {name:"B", points:["point 1","point 2"]}], 3)
+      .map(c => (typeof c === "object") ? c : {name: String(c), points: []});
+    const row = mk("div", content, "row"); row.style.alignItems = "stretch"; row.style.gap = "3vw";
+    row.style.flexDirection = V ? "column" : "row"; row.style.position = "relative";
+    const cards = cols.map((c, i) => {
+      const card = mk("div", row, "card"); card.style.setProperty("--c", COLORS[i % 5]);
+      card.style.flex = "1 1 0"; card.style.display = "flex"; card.style.flexDirection = "column"; card.style.alignItems = "stretch";
+      const nm = mk("div", card, "", String(c.name || "")); nm.style.fontSize = V ? "5vh" : "4.6vh";
+      nm.style.color = COLORS[i % 5]; nm.style.fontWeight = "700"; nm.style.marginBottom = ".6vh";
+      const pts = list(c.points, [], 4).map(p => mk("div", card, "pt", String(p)));
+      return {card, pts};
+    });
+    if (cols.length === 2 && !V) {
+      const vs = mk("div", row, "num", "VS"); vs.style.setProperty("--c", "#fff");
+      vs.style.position = "absolute"; vs.style.left = "50%"; vs.style.top = "50%";
+      vs.style.transform = "translate(-50%,-50%)"; vs.style.fontSize = "2.6vh"; vs.style.zIndex = 2;
+    }
+    const cap = mk("div", content, "cap", P.caption || "");
+    const endT = T_IN + cols.length * 0.8 + 3.2;
+    return t => {
+      cards.forEach((o, i) => {
+        const k = ease((t - T_IN - i*0.8) / 0.6);
+        o.card.style.opacity = k; o.card.style.transform = `translateY(${(1-k)*3 + bob(t, i)*k}vh)`; sheen(o.card, t, i);
+        o.pts.forEach((p, j) => { const q = ease((t - T_IN - i*0.8 - 0.5 - j*0.6) / 0.5);
+          p.style.opacity = q; p.style.transform = `translateX(${(1-q)*2}vw)`; });
+        const live = t > endT ? (Math.floor((t - endT) / 2.2) % cards.length) === i : false;
+        o.card.style.filter = live ? "brightness(1.3)" : "none";
+        if (t > endT) o.pts.forEach((p, j) => { const on = live && Math.floor(((t - endT) % 2.2) / 0.5) % o.pts.length === j;
+          p.style.background = on ? "rgba(255,255,255,.28)" : "rgba(255,255,255,.08)"; p.style.transform = `scale(${on ? 1.05 : 1})`; });
+      });
+      fadeCap(cap, t, endT - 1);
+    };
+  },
+
+  // ---------------------------------------------------------------- steps
+  steps() {
+    const items = list(P.items, ["First step","Second step","Third step"], 5).map(String);
+    const col = mk("div", content, ""); col.style.display = "flex"; col.style.flexDirection = "column";
+    col.style.gap = "2vh"; col.style.width = V ? "92%" : "70%";
+    const rows = items.map((s, i) => {
+      const r = mk("div", col, "card"); r.style.setProperty("--c", COLORS[i % 5]);
+      r.style.display = "flex"; r.style.alignItems = "center"; r.style.gap = "1.6vw"; r.style.textAlign = "left";
+      const n = mk("div", r, "num", String(i+1)); n.style.setProperty("--c", COLORS[i % 5]);
+      const tx = mk("div", r, "", s); tx.style.fontSize = V ? "3.8vh" : "3.4vh";
+      return r;
+    });
+    const cap = mk("div", content, "cap", P.caption || "");
+    const endT = T_IN + rows.length * 0.8;
+    return t => {
+      rows.forEach((r, i) => {
+        const k = ease((t - T_IN - i*0.8) / 0.6);
+        const live = t > endT ? (Math.floor((t - endT) / 1.4) % rows.length) === i : false;
+        r.style.opacity = k; r.style.transform = `translateX(${(1-k)*-4 + Math.sin(t*1.4 + i)*0.25}vw) scale(${live ? 1.05 : 1})`;
+        r.style.filter = live ? "brightness(1.35)" : "none"; sheen(r, t, i);
+      });
+      fadeCap(cap, t, endT);
+    };
+  },
+
+  // ---------------------------------------------------------------- stat
+  stat() {
+    const stats = list(P.stats, [{value:"100", label:"label"}], 3).map(s => (typeof s === "object") ? s : {value:String(s), label:""});
+    const row = mk("div", content, "row"); row.style.gap = "3vw"; row.style.flexDirection = V ? "column" : "row";
+    const cards = stats.map((s, i) => {
+      const c = mk("div", row, "card"); c.style.setProperty("--c", COLORS[i % 5]); c.style.flex = "1 1 0";
+      const v = mk("div", c, "", ""); v.style.fontSize = V ? "12vh" : "11vh"; v.style.fontWeight = "800"; v.style.color = COLORS[i % 5];
+      mk("div", c, "", String(s.label || "")).style.fontSize = "3.4vh";
+      const target = parseFloat(String(s.value).replace(/[^0-9.\-]/g, "")) || 0;
+      const dec = (String(s.value).split(".")[1] || "").length;
+      const track = mk("div", c, "", ""); track.style.cssText = "height:1.4vh;border-radius:1vh;background:rgba(255,255,255,.14);margin-top:1.4vh;overflow:hidden";
+      const fill = mk("div", track, "", ""); fill.style.cssText = `height:100%;border-radius:1vh;background:${COLORS[i % 5]}`;
+      return {c, v, s, target, dec, fill};
+    });
+    const maxT = Math.max(1, ...cards.map(o => Math.abs(o.target)));
+    const cap = mk("div", content, "cap", P.caption || "");
+    return t => {
+      cards.forEach((o, i) => {
+        const k = ease((t - T_IN - i*0.6) / 0.6), q = ease((t - T_IN - i*0.6 - 0.3) / 2.0);
+        o.c.style.opacity = k; o.c.style.transform = `translateY(${(1-k)*3 + bob(t, i)*k}vh)`; sheen(o.c, t, i);
+        o.v.textContent = (o.s.prefix || "") + (o.target * q).toFixed(o.dec) + (o.s.suffix || "");
+        o.v.style.transform = `scale(${1 + (q >= 1 ? 0.03*Math.sin(t*3 + i) : 0)})`;
+        o.fill.style.width = (100 * Math.abs(o.target) / maxT * q) + "%";
+        o.fill.style.filter = `brightness(${1.1 + 0.25*Math.sin(t*3 + i)})`;
+      });
+      fadeCap(cap, t, T_IN + cards.length*0.6 + 1.5);
+    };
+  },
+
+  // ---------------------------------------------------------------- bits
+  bits() {
+    const bits = bitsOf(P.bits, "01001000", 10);
+    const W = 1000, H = V ? 760 : 470;
+    const svg = sv("svg", content, {viewBox: `0 0 ${W} ${H}`});
+    svg.style.width = "100%"; svg.style.maxHeight = V ? "60vh" : "56vh";
+    const top = sv("text", svg, {x: W/2, y: 40, "text-anchor":"middle", fill:"#fff", "font-size":34, "font-weight":600});
+    top.textContent = String(P.analog_label || "Electrical signal");
+    const glow = sv("path", svg, {fill:"none", stroke:"#4aa8ff", "stroke-width":16, "stroke-linejoin":"round", opacity:.25});
+    const path = sv("path", svg, {fill:"none", stroke:"#4aa8ff", "stroke-width":6, "stroke-linejoin":"round"});
+    const dot = sv("circle", svg, {r: 13, fill:"#fff"});
+    const bot = sv("text", svg, {x: W/2, y: H-150, "text-anchor":"middle", fill:"#fff", "font-size":34, "font-weight":600});
+    bot.textContent = String(P.digital_label || "Binary data");
+    const box = sv("rect", svg, {x: W/2 - 42, y: H-125, width: 84, height: 88, rx: 14, fill:"rgba(255,255,255,.12)", stroke:"#fff", "stroke-width":3});
+    const strip = sv("g", svg, {});
+    const unit = 70, reps = Math.ceil(W / (unit * bits.length)) + 3, L = unit * bits.length;
+    const digits = [];
+    for (let r = 0; r < reps; r++) bits.split("").forEach((b, i) => {
+      const d = sv("text", strip, {x: (r*bits.length + i) * unit + 30, y: H-60, "text-anchor":"middle", "font-size":64,
+                                   "font-weight":700, fill: b === "1" ? "#ffd84a" : "#7fb6ff"});
+      d.textContent = b; d.dataset.x = (r*bits.length + i) * unit + 30; d.dataset.b = b; digits.push(d);
+    });
+    const wave = (x, t, k) => Math.tanh(k * Math.sin((x / W) * 2 * Math.PI * 3 - t * 1.6)) / Math.tanh(k);
+    return t => {
+      const a = ease((t - T_IN) / 0.8);
+      top.style.opacity = a; path.style.opacity = a; dot.style.opacity = a;
+      const m = ease((t - T_IN - 2.5) / 2.5), k = 1 + 40*m;
+      let d = "";
+      for (let x = 0; x <= W; x += 8) d += (x ? "L" : "M") + x + " " + (170 - wave(x, t, k) * 85);
+      path.setAttribute("d", d); glow.setAttribute("d", d); glow.style.opacity = .25 * a;
+      const dx = (t * 160) % W; dot.setAttribute("cx", dx); dot.setAttribute("cy", 170 - wave(dx, t, k) * 85);
+      const b = ease((t - T_IN - 5) / 0.8);
+      bot.style.opacity = b; strip.style.opacity = b; box.style.opacity = b;
+      const shift = Math.max((t - T_IN - 5) * 110, 0) % L;
+      strip.setAttribute("transform", `translate(${-shift} 0)`);
+      digits.forEach(dg => { const sx = parseFloat(dg.dataset.x) - shift, on = Math.abs(sx - W/2) < unit/2;
+        dg.setAttribute("fill", on ? "#ffffff" : (dg.dataset.b === "1" ? "#ffd84a" : "#7fb6ff"));
+        dg.setAttribute("font-size", on ? 76 : 64); });
+    };
+  },
+
+  // ---------------------------------------------------------------- cells (write, hold, read, erase, repeat)
+  cells() {
+    const bits = bitsOf(P.bits, "10110010", 10), n = bits.length;
+    const W = 1000, H = V ? 700 : 480, cw = Math.min(90, 880 / n - 12), gap = 12;
+    const x0 = (W - (n*cw + (n-1)*gap)) / 2, cy = H/2 + 10;
+    const svg = sv("svg", content, {viewBox: `0 0 ${W} ${H}`});
+    svg.style.width = "100%"; svg.style.maxHeight = V ? "62vh" : "58vh";
+    const cellEls = [], eDots = [], lbls = [];
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i*(cw + gap);
+      cellEls.push(sv("rect", svg, {x, y: cy - cw/2, width: cw, height: cw, rx: 10, fill:"rgba(14,22,44,.78)", stroke:"#8fa3c7", "stroke-width":4}));
+      const dots = [];
+      if (bits[i] === "1") for (let j = 0; j < 3; j++)
+        dots.push({el: sv("circle", svg, {r: cw*.09, fill:"#4aa8ff"}), bx: x + cw*(.28 + .22*j), by: cy + (j===1 ? -cw*.12 : cw*.1), j});
+      eDots.push(dots);
+      const l = sv("text", svg, {x: x + cw/2, y: cy + cw/2 + 52, "text-anchor":"middle", "font-size":40, "font-weight":700, fill: bits[i]==="1" ? "#ffd84a" : "#7fb6ff"});
+      l.textContent = bits[i]; lbls.push(l);
+    }
+    const bar = sv("rect", svg, {x: 0, y: 40, width: 150, height: 44, rx: 12, fill:"#ffd84a"});
+    const barTx = sv("text", svg, {x: 0, y: 30, "text-anchor":"middle", "font-size":28, "font-weight":600, fill:"#ffd84a"});
+    barTx.textContent = String(P.write_label || "Write voltage");
+    const arrow = sv("path", svg, {stroke:"#ffd84a", "stroke-width":5, fill:"none"});
+    const scan = sv("rect", svg, {y: cy - cw/2 - 18, width: 6, height: cw + 36, fill:"#ffa94d", rx: 3});
+    const readTx = sv("text", svg, {x: W/2, y: cy - cw/2 - 34, "text-anchor":"middle", "font-size":30, "font-weight":600, fill:"#ffa94d"});
+    readTx.textContent = String(P.read_label || "Reading the cells");
+    const lg1 = sv("circle", svg, {cx: 250, cy: H-30, r: 11, fill:"#4aa8ff"});
+    const lt1 = sv("text", svg, {x: 275, y: H-19, "font-size":30, fill:"#fff"}); lt1.textContent = String(P.one_label || "Electrons = 1");
+    const lg0 = sv("rect", svg, {x: 560, y: H-42, width: 24, height: 24, rx: 5, fill:"none", stroke:"#8fa3c7", "stroke-width":3});
+    const lt0 = sv("text", svg, {x: 596, y: H-19, "font-size":30, fill:"#fff"}); lt0.textContent = String(P.zero_label || "No electrons = 0");
+    const PER = 0.8, tw0 = T_IN + 0.4, WR = n*PER, RD = (n + 3) * 0.35, CYC = WR + 0.8 + RD + 1.4;   // one write/read/erase cycle
+    return t => {
+      const intro = ease((t - T_IN) / 0.6);
+      cellEls.forEach(c => c.style.opacity = intro);
+      [lg1, lt1, lg0, lt0].forEach(e => e.style.opacity = intro);
+      const tau = t < tw0 ? -1 : (t - tw0) % CYC;                 // time inside the current cycle
+      const wi = tau < 0 ? 0 : clamp(tau / PER, 0, n);           // write progress in cells
+      const writing = tau >= 0 && tau < WR;
+      const tr = tau - WR - 0.8;                                  // read time (negative before the read starts)
+      const reading = tr >= 0 && tr < RD;
+      const fade = tau > WR + 0.8 + RD ? 1 - ease((tau - WR - 0.8 - RD) / 1.2) : 1;   // erase at the end of the cycle
+      const bx = x0 + clamp(wi, 0, n - 1) * (cw + gap) + cw/2;
+      bar.setAttribute("x", bx - 75); barTx.setAttribute("x", bx);
+      bar.style.opacity = barTx.style.opacity = arrow.style.opacity = writing ? 1 : 0;
+      arrow.setAttribute("d", `M${bx} 90 L${bx} ${cy - cw/2 - 8} M${bx-14} ${cy - cw/2 - 24} L${bx} ${cy - cw/2 - 6} L${bx+14} ${cy - cw/2 - 24}`);
+      const u = reading ? tr / 0.35 : 0;
+      for (let i = 0; i < n; i++) {
+        const k = ease(wi - i) * fade;
+        eDots[i].forEach(o => {                                    // electrons drop in from the write bar, then jitter
+          const rise = (1 - ease(wi - i)) * -(cy - 90), jx = Math.sin(t*7 + o.j*2 + i) * 2.5, jy = Math.cos(t*6 + o.j + i) * 2.5;
+          o.el.style.opacity = k; o.el.setAttribute("cx", o.bx + jx); o.el.setAttribute("cy", o.by + jy + rise); });
+        lbls[i].style.opacity = ease(wi - i - .3) * fade;
+        const hot = reading && Math.floor(u) === i;
+        cellEls[i].setAttribute("stroke", hot ? "#ffa94d" : (bits[i] === "1" && k > .3 ? "#4aa8ff" : "#8fa3c7"));
+        cellEls[i].setAttribute("fill", hot ? "rgba(255,169,77,.35)" : "rgba(14,22,44,.78)");
+      }
+      scan.style.opacity = readTx.style.opacity = (reading && u <= n) ? 1 : 0;
+      scan.setAttribute("x", x0 + u * (cw + gap) - gap/2);
+    };
+  },
+
+  // ---------------------------------------------------------------- ring
+  ring() {
+    const bits = bitsOf(P.bits, "10110100", 12), n = bits.length;
+    const W = 1000, H = V ? 900 : 560, cx = V ? 500 : 330, cy = V ? 330 : 290, R = V ? 280 : 240, Rm = R * 0.76;
+    const svg = sv("svg", content, {viewBox: `0 0 ${W} ${H}`});
+    svg.style.width = "100%"; svg.style.maxHeight = V ? "66vh" : "60vh";
+    sv("circle", svg, {cx, cy, r: R, fill:"rgba(14,22,44,.78)", stroke:"#8fa3c7", "stroke-width":6});
+    const grooves = sv("g", svg, {});                                   // thin rings + radial ticks that spin with the disc
+    [0.52, 0.64, 0.88, 0.95].forEach(f => sv("circle", grooves, {cx, cy, r: R*f, fill:"none", stroke:"rgba(143,163,199,.28)", "stroke-width":2}));
+    for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12;
+      sv("line", grooves, {x1: cx + R*.3*Math.cos(a), y1: cy + R*.3*Math.sin(a), x2: cx + R*.46*Math.cos(a), y2: cy + R*.46*Math.sin(a), stroke:"rgba(143,163,199,.35)", "stroke-width":3}); }
+    const hub = sv("circle", svg, {cx, cy, r: R*.14, fill:"#8fa3c7", opacity:.6});
+    const mags = [];
+    const g = sv("g", svg, {});
+    for (let i = 0; i < n; i++) {
+      const m = sv("polygon", g, {points:"0,-26 20,18 -20,18", fill: bits[i]==="1" ? "#ffd84a" : "#7fb6ff", stroke:"#0b1226", "stroke-width":3});
+      m.dataset.a = (i / n) * 2 * Math.PI; m.dataset.f = bits[i] === "1" ? 0 : 180; mags.push(m);
+    }
+    const headG = sv("g", svg, {});
+    const arm = sv("line", headG, {x1: cx + R + 80, y1: cy - R - 10, x2: cx, y2: cy - Rm, stroke:"#ffa94d", "stroke-width":10, "stroke-linecap":"round"});
+    const tip = sv("circle", headG, {cx, cy: cy - Rm, r: 14, fill:"#ffa94d"});
+    const hl = sv("text", svg, {x: cx + 20, y: cy - R - 26, "font-size":28, "font-weight":600, fill:"#ffa94d"});
+    hl.textContent = String(P.head_label || "Read/write head");
+    const cap = sv("text", svg, {x: V ? W/2 : 760, y: V ? H - 190 : 150, "text-anchor": V ? "middle" : "start", "font-size":32, "font-weight":600, fill:"#fff"});
+    cap.textContent = String(P.caption || "Data stored as tiny magnets");
+    const data = sv("text", svg, {x: V ? W/2 : 760, y: V ? H - 130 : 215, "text-anchor": V ? "middle" : "start", "font-size":46, "font-weight":700});
+    const spans = bits.split("").map((b, i) => { const s = sv("tspan", data, {fill: b==="1" ? "#ffd84a" : "#7fb6ff"}); s.textContent = b + (i < n-1 ? " " : ""); return s; });
+    const lx = V ? 160 : 760, ly = V ? H - 70 : 300;
+    const p1 = sv("polygon", svg, {points:"0,-16 12,10 -12,10", fill:"#ffd84a", transform:`translate(${lx} ${ly}) rotate(90)`});
+    const t1 = sv("text", svg, {x: lx + 30, y: ly + 10, "font-size":28, fill:"#fff"}); t1.textContent = String(P.one_label || "One direction = 1");
+    const lx2 = V ? 560 : 760, ly2 = V ? H - 70 : 350;
+    const p0 = sv("polygon", svg, {points:"0,-16 12,10 -12,10", fill:"#7fb6ff", transform:`translate(${lx2} ${ly2}) rotate(-90)`});
+    const t0 = sv("text", svg, {x: lx2 + 30, y: ly2 + 10, "font-size":28, fill:"#fff"}); t0.textContent = String(P.zero_label || "Opposite direction = 0");
+    return t => {
+      const k = ease((t - T_IN) / 0.8), rot = (t - T_IN) * 75;            // degrees: the disc spins steadily
+      g.setAttribute("opacity", k);
+      grooves.setAttribute("transform", `rotate(${rot} ${cx} ${cy})`);
+      let best = 0, bestV = -2;
+      mags.forEach((m, i) => { const a = parseFloat(m.dataset.a) + rot * Math.PI / 180, f = parseFloat(m.dataset.f);
+        const near = Math.cos(a + Math.PI/2);                              // 1 when the magnet is right under the head
+        if (near > bestV) { bestV = near; best = i; }
+        const sc = 1 + 0.6 * Math.max(0, near - 0.8) / 0.2;
+        m.setAttribute("transform", `translate(${cx + Rm*Math.cos(a)} ${cy + Rm*Math.sin(a)}) rotate(${a*180/Math.PI + 90 + f}) scale(${sc})`); });
+      const wob = Math.sin(t * 2.3) * 0.012;                               // head sways slightly
+      headG.setAttribute("transform", `rotate(${wob * 57.3} ${cx + R + 80} ${cy - R - 10})`);
+      tip.setAttribute("r", 14 + 5 * Math.max(0, bestV - 0.9) / 0.1);
+      spans.forEach((s, i) => s.setAttribute("fill", i === best && k > .9 ? "#ffffff" : (bits[i] === "1" ? "#ffd84a" : "#7fb6ff")));
+      [headG, hl, cap, data, p1, t1, p0, t0].forEach((e, i) => e.style.opacity = ease((t - T_IN - 0.5 - i*0.12) / 0.6));
+    };
+  },
+};
+
+const update =(BLOCKS[P.block] || BLOCKS.flow)();
+window.setTime = function (t) {
+  document.getElementById("h").style.opacity = ease(t / T_IN);
+  update(t);
+};
+window.setTime(0);
+</script></body></html>

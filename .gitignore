@@ -1,0 +1,13 @@
+# Python environment and caches
+venv/
+__pycache__/
+*.pyc
+
+# Generated projects (videos, audio, images)
+projects/
+
+# Large model files: download them as described in README.md
+kokoro-v1.0.onnx
+voices-v1.0.bin
+
+# Local notes
