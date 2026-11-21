@@ -13,7 +13,9 @@ import subprocess
 from pathlib import Path
 from typing import List, Dict, Any
 
-TAIL_PAD_SEC = 0.3  # small breathing room after the last spoken word
+import config
+
+TAIL_PAD_SEC = config.TAIL_PAD_SEC
 
 
 def get_duration(file_path: Path) -> float:
@@ -40,10 +42,15 @@ def assemble_video(
         frames = max(1, int(round(dur * fps)))
         print(f" -> Scene {sid}: {dur:.1f}s ({frames} frames)")
 
+        try:
+            blur = float(sc.get("background_blur") or 0)       # optional: soften the background picture (0 = sharp)
+        except (TypeError, ValueError):
+            blur = 0.0
+        blur_f = f"gblur=sigma={blur:g}:steps=2," if blur > 0 else ""
         vf = (
             # Single still -> exactly `frames` frames of slow zoom
-            f"[0:v]scale={width}x{height},"
-            f"zoompan=z='min(zoom+0.0006,1.10)':d={frames}:s={width}x{height}:fps={fps}[bg];"
+            f"[0:v]scale={width}x{height},{blur_f}"
+            f"zoompan=z='min(zoom+0.0006,{config.BACKGROUND_ZOOM_MAX})':d={frames}:s={width}x{height}:fps={fps}[bg];"
             # Hold the infographic's last frame (alpha preserved) so it never cuts the scene short
             f"[1:v]format=yuva444p,tpad=stop_mode=clone:stop_duration={dur:.2f}[info];"
             f"[bg][info]overlay=shortest=1[comp];"
@@ -56,8 +63,8 @@ def assemble_video(
             "-i", sc["info_path"], "-i", sc["audio_path"],
             "-filter_complex", vf, "-map", "[vout]", "-map", "[aout]",
             "-t", f"{dur:.3f}",                            # hard stop at narration length
-            "-c:v", "h264_nvenc", "-preset", "p6", "-b:v", "16M",
-            "-r", str(fps), "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "256k",
+            "-c:v", "h264_nvenc", "-preset", "p6", "-b:v", config.VIDEO_BITRATE,
+            "-r", str(fps), "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", config.AUDIO_BITRATE,
             str(clip_path)
         ]
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -76,14 +83,14 @@ def assemble_video(
         tot_dur = get_duration(rough_cut)
         fade_out = max(0.0, tot_dur - 3.0)
         af = (
-            f"[1:a]volume=0.22,afade=t=in:st=0:d=2:curve=hsin,afade=t=out:st={fade_out:.2f}:d=3:curve=hsin[bg_vol];"
+            f"[1:a]volume={config.MUSIC_VOLUME},afade=t=in:st=0:d=2:curve=hsin,afade=t=out:st={fade_out:.2f}:d=3:curve=hsin[bg_vol];"
             f"[bg_vol][0:a]sidechaincompress=threshold=0.08:ratio=6:attack=20:release=450[ducked];"
             f"[0:a][ducked]amix=inputs=2:duration=first:dropout_transition=2[aout]"
         )
         subprocess.run([
             "ffmpeg", "-y", "-i", str(rough_cut), "-stream_loop", "-1", "-i", str(bg_music),
             "-filter_complex", af, "-map", "0:v", "-map", "[aout]",
-            "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest", str(output_mp4)
+            "-c:v", "copy", "-c:a", "aac", "-b:a", config.AUDIO_BITRATE, "-shortest", str(output_mp4)
         ], check=True)
     else:
         shutil.copy(str(rough_cut), str(output_mp4))

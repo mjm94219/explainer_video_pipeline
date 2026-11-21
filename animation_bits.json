@@ -1,0 +1,156 @@
+{
+ "name": "bits",
+ "description": "A smooth electrical wave turning into a square wave and then a scrolling stream of 1s and 0s. Use for digital versus analog signals, binary data or how a computer represents information.",
+ "params": {
+  "bits": "a binary string of 6 to 10 digits, e.g. 01001000",
+  "analog_label": "short label for the electrical signal",
+  "digital_label": "short label for the data stream"
+ },
+ "setup": {
+  "bits": "bitsOf(P.bits,'01001000',10)",
+  "W": "1000",
+  "H": "V?760:470",
+  "unit": "70",
+  "L": "unit*bits.length",
+  "reps": "Math.ceil(W/(unit*bits.length))+3",
+  "wave": "(x,tt,k)=>Math.tanh(k*Math.sin((x/W)*2*Math.PI*3-tt*1.6))/Math.tanh(k)"
+ },
+ "frame": {
+  "a": "ease((t-T_IN)/0.8)",
+  "m": "ease((t-T_IN-2.5)/2.5)",
+  "kk": "1+40*m",
+  "b": "ease((t-T_IN-5)/0.8)",
+  "shift": "Math.max((t-T_IN-5)*110,0)%L",
+  "d": "(()=>{let s='';for(let x=0;x<=W;x+=8)s+=(x?'L':'M')+x+' '+(170-wave(x,t,kk)*85);return s})()",
+  "dx": "(t*160)%W"
+ },
+ "tree": [
+  {
+   "tag": "svg",
+   "attrs": {
+    "viewBox": "0 0 {{W}} {{H}}"
+   },
+   "style": {
+    "width": "100%",
+    "max-height": "{{V?'60vh':'56vh'}}"
+   },
+   "children": [
+    {
+     "tag": "text",
+     "attrs": {
+      "x": "{{W/2}}",
+      "y": 40,
+      "text-anchor": "middle",
+      "fill": "#fff",
+      "font-size": 34,
+      "font-weight": 600
+     },
+     "text": "{{String(P.analog_label||'Electrical signal')}}",
+     "bind": {
+      "style.opacity": "a"
+     }
+    },
+    {
+     "tag": "path",
+     "attrs": {
+      "fill": "none",
+      "stroke": "#4aa8ff",
+      "stroke-width": 16,
+      "stroke-linejoin": "round"
+     },
+     "bind": {
+      "attr.d": "d",
+      "style.opacity": "0.25*a"
+     }
+    },
+    {
+     "tag": "path",
+     "attrs": {
+      "fill": "none",
+      "stroke": "#4aa8ff",
+      "stroke-width": 6,
+      "stroke-linejoin": "round"
+     },
+     "bind": {
+      "attr.d": "d",
+      "style.opacity": "a"
+     }
+    },
+    {
+     "tag": "circle",
+     "attrs": {
+      "r": 13,
+      "fill": "#fff"
+     },
+     "bind": {
+      "attr.cx": "dx",
+      "attr.cy": "170-wave(dx,t,kk)*85",
+      "style.opacity": "a"
+     }
+    },
+    {
+     "tag": "text",
+     "attrs": {
+      "x": "{{W/2}}",
+      "y": "{{H-150}}",
+      "text-anchor": "middle",
+      "fill": "#fff",
+      "font-size": 34,
+      "font-weight": 600
+     },
+     "text": "{{String(P.digital_label||'Binary data')}}",
+     "bind": {
+      "style.opacity": "b"
+     }
+    },
+    {
+     "tag": "rect",
+     "attrs": {
+      "x": "{{W/2-42}}",
+      "y": "{{H-125}}",
+      "width": 84,
+      "height": 88,
+      "rx": 14,
+      "fill": "rgba(255,255,255,.12)",
+      "stroke": "#fff",
+      "stroke-width": 3
+     },
+     "bind": {
+      "style.opacity": "b"
+     }
+    },
+    {
+     "tag": "g",
+     "bind": {
+      "style.opacity": "b",
+      "attr.transform": "`translate(${-shift} 0)`"
+     },
+     "children": [
+      {
+       "each": "reps*bits.length",
+       "tag": "text",
+       "vars": {
+        "ch": "bits[i%bits.length]",
+        "x": "i*unit+30"
+       },
+       "attrs": {
+        "x": "{{x}}",
+        "y": "{{H-60}}",
+        "text-anchor": "middle",
+        "font-weight": 700
+       },
+       "text": "{{ch}}",
+       "frame": {
+        "on": "Math.abs(x-shift-W/2)<unit/2"
+       },
+       "bind": {
+        "attr.fill": "on ? '#ffffff' : (ch==='1' ? '#ffd84a' : '#7fb6ff')",
+        "attr.font-size": "on ? 76 : 64"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

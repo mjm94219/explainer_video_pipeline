@@ -1,0 +1,73 @@
+{
+ "name": "steps",
+ "description": "A numbered list of 3 to 5 steps revealed one by one, then highlighted in turn. Use for instructions, stages in time order, or a list of reasons.",
+ "params": {
+  "items": "list of 3 to 5 short steps (3 to 7 words each) in order",
+  "caption": "short caption shown under the list (optional)"
+ },
+ "setup": {
+  "items": "list(P.items,['First step','Second step','Third step'],5).map(String)",
+  "n": "items.length",
+  "endT": "T_IN+n*0.8"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "style": {
+    "display": "flex",
+    "flex-direction": "column",
+    "gap": "2vh",
+    "width": "{{V?'92%':'70%'}}"
+   },
+   "children": [
+    {
+     "each": "items",
+     "tag": "div",
+     "class": "card",
+     "style": {
+      "--c": "{{COLORS[i%5]}}",
+      "display": "flex",
+      "align-items": "center",
+      "gap": "1.6vw",
+      "text-align": "left"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.8)/0.6)",
+      "isLive": "t>endT && Math.floor((t-endT)/1.4)%n===i"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateX(${(1-k)*-4+Math.sin(t*1.4+i)*0.25}vw) scale(${isLive?1.05:1})`",
+      "style.filter": "isLive ? 'brightness(1.35)' : 'none'",
+      "style.backgroundImage": "sheen(t,i)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "class": "num",
+       "text": "{{i+1}}",
+       "style": {
+        "--c": "{{COLORS[i%5]}}"
+       }
+      },
+      {
+       "tag": "div",
+       "text": "{{item}}",
+       "style": {
+        "font-size": "{{V?'3.8vh':'3.4vh'}}"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-endT)/0.6)"
+   }
+  }
+ ]
+}

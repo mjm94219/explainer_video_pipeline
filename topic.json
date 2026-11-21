@@ -1,0 +1,44 @@
+{
+  "topic": "How computers work from electricity to storage",
+  "template": "Video_Landscape_1080p_16x9",
+  "languages": [
+    "en"
+  ],
+  "scenes": [
+    {
+      "description": "Electricity from the wall outlet to a PC, through the power supply to the CPU",
+      "animation": "flow",
+      "image": "a laptop on a wooden desk"
+    },
+    {
+      "description": "The CPU turns electricity into 1s and 0s",
+      "animation": "bits",
+      "image": "a close-up of CPU on a motherboard",
+      "blur": 20
+    },
+    {
+      "description": "How an SSD stores bits as electrons",
+      "animation": "cells",
+      "image": "a close-up of a solid state drive SSD on a motherboard",
+      "blur": 20
+    },
+    {
+      "description": "How a hard drive stores bits as magnets",
+      "animation": "ring",
+      "image": "a close-up of an open hard disk drive with a spinning magnetic platter and read write head",
+      "blur": 20
+    },
+    {
+      "description": "How RAM, a temporary storage, sits between the fast CPU and slow storage and loses its data when the power is off",
+      "animation": "stack",
+      "image": "a close-up of a RAM memory module stick with memory chips on a motherboard",
+      "blur": 20
+    },
+    {
+      "description": "SSD versus hard disk drive",
+      "animation": "compare",
+      "image": "a close-up of SSD and hard disk drive",
+      "blur": 20
+    }
+  ]
+}

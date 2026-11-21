@@ -1,0 +1,9 @@
+{
+ "name": "none",
+ "description": "No animation: the scene shows only its background picture and the subtitles. Use only when the topic asks for it.",
+ "params": {},
+ "hidden": true,
+ "heading": false,
+ "setup": {},
+ "tree": []
+}

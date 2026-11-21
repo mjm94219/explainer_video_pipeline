@@ -5,44 +5,61 @@ project resume selection, file/format validation, and platform safe-margin calcu
 """
 
 import json
+import re
 import copy
 import argparse
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from config import RESOLUTION_PRESETS, SUPPORTED_AUDIO_EXTENSIONS, PROJECTS_BASE_DIR
+from config import (SUPPORTED_AUDIO_EXTENSIONS, PROJECTS_BASE_DIR, DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_FPS,
+                    DEFAULT_BLUR, SCENE_WORDS_MIN, SCENE_WORDS_MAX, WORDS_PER_SECOND)
+from animation_library import load_catalog
 
-PROFILES_FILE = Path(__file__).resolve().parent / "profiles.json"
+PROFILES_FILE = Path(__file__).resolve().parent / "video_template.json"
+DEFAULT_SIZE = (DEFAULT_WIDTH, DEFAULT_HEIGHT)
+
+
+def aspect_of(width: int, height: int) -> str:
+    """Orientation label used by the planner and the safe-margin maths: '9:16', '1:1' or '16:9'."""
+    if height > width:
+        return "9:16"
+    if height == width:
+        return "1:1"
+    return "16:9"
+
+
+def parse_size(text: str, fallback: tuple) -> tuple:
+    """'1920x1080' -> (1920, 1080); anything else keeps the fallback."""
+    m = re.fullmatch(r"\s*(\d{3,5})\s*[xX*]\s*(\d{3,5})\s*", text or "")
+    if not m:
+        return fallback
+    w, h = int(m.group(1)), int(m.group(2))
+    return (w - w % 2, h - h % 2)       # video encoders need even sizes
 
 
 # ---------------------------------------------------------------------------
 # 1. Profile Disk I/O & Validation
 # ---------------------------------------------------------------------------
 def load_profiles() -> Dict[str, Any]:
-    """Loads saved profiles from profiles.json, falling back to built-in presets if missing."""
+    """Loads saved profiles from video_template.json, falling back to built-in presets if missing."""
     if not PROFILES_FILE.is_file():
+        w, h = DEFAULT_SIZE
         return {
-            "Video_Portrait_1080p_9x16": {
-                "description": "Vertical 9:16 portrait optimized for YouTube Shorts",
-                "aspect_ratio": "9:16", "resolution_tier": "1080p",
-                "fps": 60, "languages": ["en"], "music": None
-            },
-            "Video_Landscape_1080p_16x9": {
-                "description": "Standard 16:9 widescreen landscape for desktop YouTube",
-                "aspect_ratio": "16:9", "resolution_tier": "1080p",
-                "fps": 30, "languages": ["en"], "music": None
-            }
+            f"Video_Portrait_{w}x{h}": {"description": "Vertical portrait (built-in fallback; video_template.json is missing)",
+                                        "width": h, "height": w, "fps": DEFAULT_FPS, "languages": ["en"], "music": None},
+            f"Video_Landscape_{w}x{h}": {"description": "Widescreen landscape (built-in fallback; video_template.json is missing)",
+                                         "width": w, "height": h, "fps": DEFAULT_FPS, "languages": ["en"], "music": None},
         }
     try:
         with open(PROFILES_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"Warning: Failed to parse profiles.json ({e}). Using empty registry.")
+        print(f"Warning: Failed to parse video_template.json ({e}). Using empty registry.")
         return {}
 
 
 def save_profiles_file(profiles: Dict[str, Any]) -> bool:
-    """Overwrites profiles.json with formatted JSON."""
+    """Overwrites video_template.json with formatted JSON."""
     try:
         with open(PROFILES_FILE, "w", encoding="utf-8") as f:
             json.dump(profiles, f, indent=2, ensure_ascii=False)
@@ -53,13 +70,13 @@ def save_profiles_file(profiles: Dict[str, Any]) -> bool:
 
 
 def save_profile(name: str, profile_data: Dict[str, Any]) -> bool:
-    """Persists a single sanitized profile into profiles.json."""
+    """Persists a single sanitized profile into video_template.json."""
     profiles = load_profiles()
     clean_entry = {
-        "description": profile_data.get("description", f"Preset for {profile_data.get('aspect_ratio')}"),
-        "aspect_ratio": profile_data.get("aspect_ratio", "16:9"),
-        "resolution_tier": profile_data.get("resolution_tier", "1080p"),
-        "fps": profile_data.get("fps", 30),
+        "description": profile_data.get("description", f"Preset for {profile_data.get('width', DEFAULT_SIZE[0])}x{profile_data.get('height', DEFAULT_SIZE[1])}"),
+        "width": profile_data.get("width", DEFAULT_SIZE[0]),
+        "height": profile_data.get("height", DEFAULT_SIZE[1]),
+        "fps": profile_data.get("fps", DEFAULT_FPS),
         "languages": profile_data.get("languages", ["en"]),
         "music": profile_data.get("music", None)
     }
@@ -155,8 +172,7 @@ def prompt_and_validate_audio_path(current_music: Optional[str]) -> Optional[str
 def print_profile_card(name: str, p: Dict[str, Any]):
     print(f"\nPreset: [{name}]")
     print(f"  Description:      {p.get('description', 'N/A')}")
-    print(f"  Aspect Ratio:     {p.get('aspect_ratio')}")
-    print(f"  Resolution Tier:  {p.get('resolution_tier')}")
+    print(f"  Size:             {p.get('width')}x{p.get('height')} ({aspect_of(p.get('width', 0), p.get('height', 0))})")
     print(f"  Frame Rate:       {p.get('fps')} fps")
     print(f"  Languages:        {', '.join(p.get('languages', []))}")
     print(f"  Background Music: {p.get('music') or 'None'}")
@@ -198,11 +214,8 @@ def modify_existing_profile(profiles: Dict[str, Any]) -> Dict[str, Any]:
     desc_in = input(f"Description [{p.get('description')}]: ").strip()
     desc = desc_in if desc_in else p.get("description")
 
-    aspect_in = input(f"Aspect Ratio (16:9 / 9:16 / 1:1) [{p.get('aspect_ratio')}]: ").strip()
-    aspect = aspect_in if aspect_in in ("16:9", "9:16", "1:1") else p.get("aspect_ratio")
-
-    res_in = input(f"Resolution Tier (720p / 1080p / 4k) [{p.get('resolution_tier')}]: ").strip()
-    res_tier = res_in if res_in in ("720p", "1080p", "4k") else p.get("resolution_tier")
+    size_in = input(f"Size WIDTHxHEIGHT, e.g. 1920x1080 [{p.get('width')}x{p.get('height')}]: ").strip()
+    width, height = parse_size(size_in, (p.get("width", DEFAULT_SIZE[0]), p.get("height", DEFAULT_SIZE[1])))
 
     fps_in = input(f"FPS (24 / 30 / 60) [{p.get('fps')}]: ").strip()
     fps = int(fps_in) if fps_in in ("24", "30", "60") else p.get("fps")
@@ -214,7 +227,7 @@ def modify_existing_profile(profiles: Dict[str, Any]) -> Dict[str, Any]:
     music = prompt_and_validate_audio_path(p.get("music"))
 
     p.update({
-        "description": desc, "aspect_ratio": aspect, "resolution_tier": res_tier,
+        "description": desc, "width": width, "height": height,
         "fps": fps, "languages": langs, "music": music
     })
 
@@ -262,17 +275,11 @@ def duplicate_existing_profile(profiles: Dict[str, Any]) -> Dict[str, Any]:
     if tweak not in ("n", "no"):
         print("\n(Press Enter to accept current value from source preset)")
 
-        cur_aspect = cloned_data.get("aspect_ratio", "16:9")
-        aspect_in = input(f"Aspect Ratio (16:9 / 9:16 / 1:1) [{cur_aspect}]: ").strip()
-        if aspect_in in ("16:9", "9:16", "1:1"):
-            cloned_data["aspect_ratio"] = aspect_in
+        cur_size = (cloned_data.get("width", DEFAULT_SIZE[0]), cloned_data.get("height", DEFAULT_SIZE[1]))
+        size_in = input(f"Size WIDTHxHEIGHT, e.g. 1920x1080 [{cur_size[0]}x{cur_size[1]}]: ").strip()
+        cloned_data["width"], cloned_data["height"] = parse_size(size_in, cur_size)
 
-        cur_res = cloned_data.get("resolution_tier", "1080p")
-        res_in = input(f"Resolution Tier (720p / 1080p / 4k) [{cur_res}]: ").strip()
-        if res_in in ("720p", "1080p", "4k"):
-            cloned_data["resolution_tier"] = res_in
-
-        cur_fps = cloned_data.get("fps", 30)
+        cur_fps = cloned_data.get("fps", DEFAULT_FPS)
         fps_in = input(f"FPS (24 / 30 / 60) [{cur_fps}]: ").strip()
         if fps_in in ("24", "30", "60"):
             cloned_data["fps"] = int(fps_in)
@@ -413,79 +420,110 @@ def prompt_interactive_config(profiles: Dict[str, Any], auto_save_name: Optional
         topic = input("Topic cannot be empty. Please enter topic: ").strip()
 
     while True:
-        print("\nSelect Configuration Source:")
+        print("\nSelect a video template:")
         profile_keys = list(profiles.keys())
         for idx, name in enumerate(profile_keys, 1):
             desc = profiles[name].get("description", "")
-            print(f"  {idx}) Use Profile: [{name}] - {desc}")
-        custom_idx = len(profile_keys) + 1
-        manage_idx = len(profile_keys) + 2
-        print(f"  {custom_idx}) Custom Manual Configuration")
-        print(f"  {manage_idx}) [M] Manage Presets (View / Edit / Clone / Delete)")
+            print(f"  {idx}) [{name}] {profiles[name].get('width')}x{profiles[name].get('height')} - {desc}")
+        manage_idx = len(profile_keys) + 1
+        print(f"  {manage_idx}) [M] Manage templates (View / Edit / Clone / Delete)")
 
         choice_str = input(f"Choice [1-{manage_idx}, default=1]: ").strip().lower()
-
         if choice_str in ("m", str(manage_idx)):
             profiles = manage_profiles_menu(profiles)
             continue
-
-        try:
-            choice_idx = int(choice_str) - 1
-        except ValueError:
+        if not choice_str:
             choice_idx = 0
-
-        if 0 <= choice_idx < len(profile_keys):
-            chosen_profile_name = profile_keys[choice_idx]
-            p_data = profiles[chosen_profile_name]
-            print(f" -> Loaded profile: '{chosen_profile_name}'")
-
-            aspect = p_data.get("aspect_ratio", "16:9")
-            res_tier = p_data.get("resolution_tier", "1080p")
-            fps = p_data.get("fps", 30)
-            languages = p_data.get("languages", ["en"])
-            music = p_data.get("music", None)
-            break
         else:
-            print("\nSelect Aspect Ratio:\n  1) 16:9 (Landscape)\n  2) 9:16 (Vertical)\n  3) 1:1 (Square)")
-            ratio_map = {"1": "16:9", "2": "9:16", "3": "1:1"}
-            aspect = ratio_map.get(input("Choice [1-3, default=1]: ").strip(), "16:9")
+            try:
+                choice_idx = int(choice_str) - 1
+            except ValueError:
+                choice_idx = -1
+        if not 0 <= choice_idx < len(profile_keys):
+            print("[!] Invalid choice.")
+            continue
 
-            print(f"\nSelect Resolution for {aspect}:\n  1) 720p\n  2) 1080p\n  3) 4K")
-            res_map = {"1": "720p", "2": "1080p", "3": "4k"}
-            res_tier = res_map.get(input("Choice [1-3, default=2]: ").strip(), "1080p")
+        chosen_profile_name = profile_keys[choice_idx]
+        p_data = profiles[chosen_profile_name]
+        print(f" -> Loaded template: '{chosen_profile_name}'")
+        width = p_data.get("width", DEFAULT_SIZE[0])
+        height = p_data.get("height", DEFAULT_SIZE[1])
+        fps = p_data.get("fps", DEFAULT_FPS)
+        languages = p_data.get("languages", ["en"])
+        music = p_data.get("music", None)
+        break
 
-            print("\nSelect Frame Rate:\n  1) 24 fps\n  2) 30 fps\n  3) 60 fps")
-            fps_map = {"1": 24, "2": 30, "3": 60}
-            fps = fps_map.get(input("Choice [1-3, default=2]: ").strip(), 30)
+    if auto_save_name:
+        save_profile(auto_save_name, {
+            "description": input("Brief description for this template: ").strip() or f"Template {width}x{height}",
+            "width": width, "height": height, "fps": fps, "languages": languages, "music": music
+        })
 
-            langs_raw = input("\nTarget Languages (comma-separated, default='en'): ").strip()
-            languages = [l.strip().lower() for l in langs_raw.split(",")] if langs_raw else ["en"]
-
-            music = prompt_and_validate_audio_path(None)
-
-            target_save_name = auto_save_name
-            if not target_save_name:
-                prompt_save = input("\nSave this configuration as a reusable preset in profiles.json? [y/N]: ").strip().lower()
-                if prompt_save in ("y", "yes"):
-                    target_save_name = input("Enter a name for this preset: ").strip()
-
-            if target_save_name:
-                desc = input("Brief description for this preset: ").strip() or f"Custom preset for {aspect}"
-                save_payload = {
-                    "description": desc, "aspect_ratio": aspect, "resolution_tier": res_tier,
-                    "fps": fps, "languages": languages, "music": music
-                }
-                save_profile(target_save_name, save_payload)
-
-            break
-
-    width, height = RESOLUTION_PRESETS[aspect][res_tier]
     return {
-        "topic": topic, "aspect_ratio": aspect, "resolution_tier": res_tier,
+        "topic": topic, "aspect_ratio": aspect_of(width, height),
         "width": width, "height": height, "fps": fps, "languages": languages,
         "music": music, "output": "master_explainer.mp4",
         "resume_project_json": None
     }
+
+
+def load_topic_file(path_str: str) -> Dict[str, Any]:
+    """Reads a topic JSON file (see topic.json) and returns {"topic": <text for the planner>, plus any settings it names}.
+    File shape: {"topic": "...", "template": "...", "languages": ["en"], "scenes": [{"description": "...", "animation": "flow", "image": "...", "blur": 20, "words": 100}]}
+    Only "topic" is required. Each scene needs a "description"; "animation", "image", "blur" and "words" are optional."""
+    path = Path(path_str)
+    if not path.is_file() and not path.is_absolute():
+        path = Path(__file__).resolve().parent / path_str
+    if not path.is_file():
+        raise SystemExit(f"Error: topic file not found: {path_str}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception as e:
+        raise SystemExit(f"Error: {path.name} is not valid JSON ({e})")
+    topic = str(data.get("topic", "")).strip()
+    if not topic:
+        raise SystemExit(f"Error: {path.name} needs a \"topic\" field")
+
+    valid = set(load_catalog(quiet=True))
+    scenes = data.get("scenes") or []
+    lines = [f"{topic.rstrip('. ')}." + (f" Exactly {len(scenes)} scenes." if scenes else "")]
+    for i, sc in enumerate(scenes, 1):
+        if isinstance(sc, str):
+            sc = {"description": sc}
+        desc = str(sc.get("description", "")).strip()
+        if not desc:
+            raise SystemExit(f"Error: scene {i} in {path.name} needs a \"description\"")
+        line = f"Scene {i}: {desc}"
+        anim = str(sc.get("animation", "")).strip()
+        if anim and anim in valid:
+            line += f" (use {anim})"
+        elif anim:
+            print(f"Warning: scene {i} animation '{anim}' is not an animation (available: {', '.join(sorted(valid))}); the planner will choose one.")
+        lines.append(line)
+        image = str(sc.get("image", "")).strip()
+        if image:
+            lines.append(f"Image: {image}")
+        words = sc.get("words")
+        if words not in (None, ""):
+            try:
+                n_words = int(words)
+                if not SCENE_WORDS_MIN <= n_words <= SCENE_WORDS_MAX:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise SystemExit(f"Error: scene {i} \"words\" must be a whole number between {SCENE_WORDS_MIN} and {SCENE_WORDS_MAX} (about {WORDS_PER_SECOND:g} words per second)")
+            lines.append(f"Words: {n_words}")
+        blur = sc.get("blur")
+        if blur not in (None, False, 0, ""):
+            try:
+                sigma = DEFAULT_BLUR if blur is True else float(blur)
+            except (TypeError, ValueError):
+                raise SystemExit(f"Error: scene {i} \"blur\" must be a number such as 20 (or true)")
+            lines.append(f"Blur: {sigma:g}")
+
+    settings = {k: data[k] for k in ("template", "languages", "fps", "music", "output") if data.get(k) is not None}
+    settings["topic"] = "\n".join(lines)
+    print(f"[CLI] Loaded topic file: {path.name} ({len(scenes)} scene{'s' if len(scenes) != 1 else ''})")
+    return settings
 
 
 def get_project_config() -> Dict[str, Any]:
@@ -494,13 +532,12 @@ def get_project_config() -> Dict[str, Any]:
     parser = argparse.ArgumentParser(description="Autonomous Explainer Video Studio")
     parser.add_argument("-R", "--resume", type=str, metavar="PROJECT_DIR_OR_NAME", help="Resume an existing project from its folder name or path")
     parser.add_argument("-t", "--topic", type=str, help="Video topic or concept")
-    parser.add_argument("-p", "--profile", type=str, choices=list(profiles.keys()), help="Saved preset profile from profiles.json")
-    parser.add_argument("-a", "--aspect", choices=["16:9", "9:16", "1:1"], help="Aspect ratio override")
-    parser.add_argument("-r", "--resolution", choices=["720p", "1080p", "4k"], help="Resolution tier override")
+    parser.add_argument("-T", "--topic-file", type=str, metavar="TOPIC_JSON", help="Read the topic, scenes and settings from a JSON file (see topic.json)")
+    parser.add_argument("-p", "--profile", type=str, choices=list(profiles.keys()), help="Video template from video_template.json (sets the size and frame rate)")
     parser.add_argument("-f", "--fps", type=int, choices=[24, 30, 60], help="Frame rate override")
     parser.add_argument("-l", "--languages", type=str, help="Comma-separated language codes, e.g. 'en'")
     parser.add_argument("-m", "--music", type=str, help="Background music audio file override")
-    parser.add_argument("-o", "--output", type=str, default="master_explainer.mp4", help="Output MP4 file")
+    parser.add_argument("-o", "--output", type=str, default=None, help="Output MP4 file (default master_explainer.mp4)")
     parser.add_argument("--manage-profiles", action="store_true", help="Open the preset profile manager directly")
     parser.add_argument(
         "--save-profile",
@@ -508,7 +545,7 @@ def get_project_config() -> Dict[str, Any]:
         const="__PROMPT__",
         default=None,
         metavar="PROFILE_NAME",
-        help="Save current parameters into profiles.json under this preset name"
+        help="Save current parameters into video_template.json under this preset name"
     )
     args = parser.parse_args()
 
@@ -520,48 +557,54 @@ def get_project_config() -> Dict[str, Any]:
         proj_json = resolve_resume_path(args.resume)
         return {"resume_project_json": str(proj_json)}
 
-    if not args.topic and not args.profile:
+    if args.topic and args.topic_file:
+        parser.error("use either -t or -T, not both")
+    file_cfg = load_topic_file(args.topic_file) if args.topic_file else {}
+
+    if not args.topic and not args.profile and not args.topic_file:
         auto_save = None if args.save_profile == "__PROMPT__" else args.save_profile
         return prompt_interactive_config(profiles, auto_save_name=auto_save)
 
     base = {}
-    if args.profile and args.profile in profiles:
-        base = profiles[args.profile]
-        print(f"[CLI] Loaded preset profile: '{args.profile}'")
+    template_name = args.profile or file_cfg.get("template")
+    if template_name and template_name not in profiles:
+        raise SystemExit(f"Error: template '{template_name}' is not in video_template.json (available: {', '.join(profiles)})")
+    if template_name:
+        base = profiles[template_name]
+        print(f"[CLI] Loaded preset profile: '{template_name}'")
 
-    aspect = args.aspect or base.get("aspect_ratio", "16:9")
-    res_tier = args.resolution or base.get("resolution_tier", "1080p")
-    fps = args.fps or base.get("fps", 30)
+    width = base.get("width", DEFAULT_SIZE[0])
+    height = base.get("height", DEFAULT_SIZE[1])
+    fps = args.fps or file_cfg.get("fps") or base.get("fps", DEFAULT_FPS)
 
     if args.languages:
         languages = [l.strip().lower() for l in args.languages.split(",") if l.strip()]
     else:
-        languages = base.get("languages", ["en"])
+        languages = file_cfg.get("languages") or base.get("languages", ["en"])
 
-    music = args.music if args.music is not None else base.get("music", None)
+    music = args.music if args.music is not None else file_cfg.get("music", base.get("music", None))
 
     if args.save_profile:
         save_name = args.save_profile
         if save_name == "__PROMPT__":
             save_name = input("\nEnter name for this new preset: ").strip()
         if save_name:
-            desc = input(f"Description for preset '{save_name}': ").strip() or f"Custom preset for {aspect}"
+            desc = input(f"Description for template '{save_name}': ").strip() or f"Template {width}x{height}"
             save_payload = {
-                "description": desc, "aspect_ratio": aspect, "resolution_tier": res_tier,
+                "description": desc, "width": width, "height": height,
                 "fps": fps, "languages": languages, "music": music
             }
             save_profile(save_name, save_payload)
 
-    topic = args.topic
+    topic = args.topic or file_cfg.get("topic")
     if not topic:
         topic = input("\nEnter Video Topic/Idea: ").strip()
         while not topic:
             topic = input("Topic cannot be empty: ").strip()
 
-    width, height = RESOLUTION_PRESETS[aspect][res_tier]
     return {
-        "topic": topic, "aspect_ratio": aspect, "resolution_tier": res_tier,
+        "topic": topic, "aspect_ratio": aspect_of(width, height),
         "width": width, "height": height, "fps": fps, "languages": languages,
-        "music": music, "output": args.output,
+        "music": music, "output": args.output or file_cfg.get("output") or "master_explainer.mp4",
         "resume_project_json": None
     }

@@ -1,0 +1,109 @@
+{
+ "name": "compare",
+ "description": "Side-by-side comparison of 2 or 3 things (A versus B), each with a few short points. Use when the narration contrasts options.",
+ "params": {
+  "columns": "list of 2 or 3 objects like {\"name\": \"SSD\", \"points\": [\"fast\", \"no moving parts\"]}, 2 to 4 short points each",
+  "caption": "short caption shown under the columns (optional)"
+ },
+ "setup": {
+  "cols": "list(P.columns,[{name:'A',points:['point 1','point 2']},{name:'B',points:['point 1','point 2']}],3).map(c=>typeof c==='object'?c:{name:String(c),points:[]})",
+  "nc": "cols.length",
+  "endT": "T_IN+nc*0.8+3.2"
+ },
+ "frame": {
+  "liveIdx": "t>endT ? Math.floor((t-endT)/2.2)%nc : -1",
+  "ph": "t>endT ? Math.floor(((t-endT)%2.2)/0.5) : -1"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "class": "row",
+   "style": {
+    "align-items": "stretch",
+    "gap": "3vw",
+    "flex-direction": "{{V?'column':'row'}}",
+    "position": "relative"
+   },
+   "children": [
+    {
+     "each": "cols",
+     "as": "col",
+     "tag": "div",
+     "class": "card",
+     "style": {
+      "--c": "{{COLORS[i%5]}}",
+      "flex": "1 1 0",
+      "display": "flex",
+      "flex-direction": "column",
+      "align-items": "stretch"
+     },
+     "vars": {
+      "pts": "list(col.points,[],4)"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.8)/0.6)",
+      "isLive": "liveIdx===i"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateY(${(1-k)*3+bob(t,i)*k}vh)`",
+      "style.backgroundImage": "sheen(t,i)",
+      "style.filter": "isLive ? 'brightness(1.3)' : 'none'"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "text": "{{String(col.name||'')}}",
+       "style": {
+        "font-size": "{{V?'5vh':'4.6vh'}}",
+        "color": "{{COLORS[i%5]}}",
+        "font-weight": "700",
+        "margin-bottom": ".6vh"
+       }
+      },
+      {
+       "each": "pts",
+       "index": "j",
+       "as": "p",
+       "tag": "div",
+       "class": "pt",
+       "text": "{{String(p)}}",
+       "frame": {
+        "q": "ease((t-T_IN-i*0.8-0.5-j*0.6)/0.5)",
+        "on": "isLive && ph%pts.length===j"
+       },
+       "bind": {
+        "style.opacity": "q",
+        "style.transform": "t>endT ? `scale(${on?1.05:1})` : `translateX(${(1-q)*2}vw)`",
+        "style.background": "t>endT ? (on ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.08)') : ''"
+       }
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "num",
+     "text": "VS",
+     "if": "nc===2 && !V",
+     "style": {
+      "--c": "#fff",
+      "position": "absolute",
+      "left": "50%",
+      "top": "50%",
+      "transform": "translate(-50%,-50%)",
+      "font-size": "2.6vh",
+      "z-index": "2"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-(endT-1))/0.6)"
+   }
+  }
+ ]
+}

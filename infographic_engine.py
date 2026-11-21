@@ -1,5 +1,5 @@
 """
-Renders a scene's animation block (blocks.html) to a transparent ProRes 4444 .mov overlay
+Renders a scene's animation block (drawn by animator.html from the animation_*.json files) to a transparent ProRes 4444 .mov overlay
 through Playwright + FFmpeg (html_engine.py).
 """
 
@@ -25,6 +25,7 @@ def render_animation(scene_id: int, graphics_dir: Path, width: int, height: int,
     dur = duration if duration > 0 else 12.0
     payload = dict(params)
     payload.update(entry.get("fixed") or {})
+    payload["spec"] = entry.get("spec") or {}          # how to draw it (from the animation_*.json files)
     payload.update({"duration": round(dur, 2), "vertical": height > width,
                     "sub_margin": float(sub_margin), "safe_w": float(safe_w)})
     target = graphics_dir / f"infographic_{scene_id:02d}.mov"

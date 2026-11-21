@@ -1,0 +1,81 @@
+{
+ "name": "grid",
+ "description": "A grid of 4 to 9 labelled tiles that appear one by one and then light up in turn. Use for a list of parts, components, types or examples that belong together and have no particular order.",
+ "params": {
+  "items": "list of 4 to 9 tiles, each a short name (1 to 3 words) or an object like {\"name\": \"CPU\", \"note\": \"thinks\"} with a very short note",
+  "caption": "short caption shown under the grid (optional)"
+ },
+ "setup": {
+  "items": "list(P.items,['One','Two','Three','Four'],9).map(x=>typeof x==='object'?x:{name:String(x),note:''})",
+  "n": "items.length",
+  "cols": "V ? 2 : (n<=4 ? 2 : 3)",
+  "endT": "T_IN+n*0.45+0.3"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "style": {
+    "display": "grid",
+    "grid-template-columns": "{{`repeat(${cols}, 1fr)`}}",
+    "gap": "2vh 2vw",
+    "width": "{{cols===2 ? (V?'92%':'70%') : '100%'}}"
+   },
+   "children": [
+    {
+     "each": "items",
+     "as": "g",
+     "tag": "div",
+     "class": "card",
+     "style": {
+      "--c": "{{COLORS[i%5]}}",
+      "display": "flex",
+      "flex-direction": "column",
+      "align-items": "center",
+      "justify-content": "center",
+      "gap": ".5vh",
+      "min-height": "{{V?'12vh':'14vh'}}"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.45)/0.5)",
+      "isLive": "t>endT && Math.floor((t-endT)/1.0)%n===i"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`scale(${(.85+.15*k)*(isLive?1.06:1)})`",
+      "style.filter": "isLive ? 'brightness(1.4)' : 'none'",
+      "style.backgroundImage": "sheen(t,i)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "text": "{{String(g.name||'')}}",
+       "style": {
+        "font-size": "{{V?'3.8vh':'3.6vh'}}",
+        "color": "{{COLORS[i%5]}}",
+        "font-weight": "700"
+       }
+      },
+      {
+       "tag": "div",
+       "if": "g.note",
+       "text": "{{String(g.note)}}",
+       "style": {
+        "font-size": "2.6vh",
+        "color": "#cfd9ea",
+        "font-weight": "500"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-endT)/0.6)"
+   }
+  }
+ ]
+}

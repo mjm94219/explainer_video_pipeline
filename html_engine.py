@@ -1,6 +1,6 @@
 """
 HTML animation renderer (Playwright + FFmpeg)
-Renders a blocks page to a transparent ProRes 4444 .mov overlay.
+Renders an animation page (animator.html) to a transparent ProRes 4444 .mov overlay.
 
 How it works: the page exposes setTime(t). For every frame we call setTime(frame / fps), take a transparent PNG
 screenshot, and stream the PNGs into FFmpeg. Frames are exact (no real-time capture), so timing never drifts.

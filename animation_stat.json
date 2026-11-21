@@ -1,0 +1,101 @@
+{
+ "name": "stat",
+ "description": "1 to 3 big numbers that count up, each with a label. Use when the narration quotes figures (sizes, speeds, percentages, counts).",
+ "params": {
+  "stats": "list of 1 to 3 objects like {\"value\": \"100\", \"prefix\": \"\", \"suffix\": \"x\", \"label\": \"faster than a hard drive\"}; value must be a plain number",
+  "caption": "short caption shown under the numbers (optional)"
+ },
+ "setup": {
+  "stats": "list(P.stats,[{value:'100',label:'label'}],3).map(s=>typeof s==='object'?s:{value:String(s),label:''})",
+  "n": "stats.length",
+  "maxT": "Math.max(1,...stats.map(s=>Math.abs(num(s.value))))"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "class": "row",
+   "style": {
+    "gap": "3vw",
+    "flex-direction": "{{V?'column':'row'}}"
+   },
+   "children": [
+    {
+     "each": "stats",
+     "as": "s",
+     "tag": "div",
+     "class": "card",
+     "style": {
+      "--c": "{{COLORS[i%5]}}",
+      "flex": "1 1 0"
+     },
+     "vars": {
+      "target": "num(s.value)",
+      "dec": "decimals(s.value)"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.6)/0.6)",
+      "q": "ease((t-T_IN-i*0.6-0.3)/2.0)"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateY(${(1-k)*3+bob(t,i)*k}vh)`",
+      "style.backgroundImage": "sheen(t,i)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "style": {
+        "font-size": "{{V?'12vh':'11vh'}}",
+        "font-weight": "800",
+        "color": "{{COLORS[i%5]}}"
+       },
+       "bind": {
+        "text": "(s.prefix||'')+(target*q).toFixed(dec)+(s.suffix||'')",
+        "style.transform": "`scale(${1+(q>=1?0.03*Math.sin(t*3+i):0)})`"
+       }
+      },
+      {
+       "tag": "div",
+       "text": "{{String(s.label||'')}}",
+       "style": {
+        "font-size": "3.4vh"
+       }
+      },
+      {
+       "tag": "div",
+       "style": {
+        "height": "1.4vh",
+        "border-radius": "1vh",
+        "background": "rgba(255,255,255,.14)",
+        "margin-top": "1.4vh",
+        "overflow": "hidden"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "style": {
+          "height": "100%",
+          "border-radius": "1vh",
+          "background": "{{COLORS[i%5]}}"
+         },
+         "bind": {
+          "style.width": "(100*Math.abs(target)/maxT*q)+'%'",
+          "style.filter": "`brightness(${1.1+0.25*Math.sin(t*3+i)})`"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-(T_IN+n*0.6+1.5))/0.6)"
+   }
+  }
+ ]
+}

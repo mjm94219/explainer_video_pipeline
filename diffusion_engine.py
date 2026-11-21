@@ -18,11 +18,11 @@ import numpy as np
 import config
 from config import COMFY_URL
 
-SUBMIT_TIMEOUT = 60      # seconds to wait for ComfyUI to accept the prompt
-POLL_TIMEOUT = 30        # per-request timeout while polling history
-RENDER_DEADLINE = 600    # total seconds to wait for one image
+SUBMIT_TIMEOUT = config.COMFY_SUBMIT_TIMEOUT
+POLL_TIMEOUT = config.COMFY_POLL_TIMEOUT
+RENDER_DEADLINE = config.COMFY_RENDER_DEADLINE
 
-# Model profiles. Pick one with IMAGE_MODEL in config.py.
+# Model profiles. Pick one with IMAGE_MODEL in settings.json.
 #   gen_mp: render at about this many megapixels (same aspect ratio), then scale to the target size.
 #           None = render directly at the target size.
 IMAGE_PROFILES = {
@@ -85,7 +85,7 @@ def _cancel_prompt(prompt_id: str):
 def render_background_plate(prompt_text: str, dest_png: Path, width: int, height: int) -> Path:
     print(f" -> Queueing ComfyUI background ({width}x{height})...")
     prefix = f"bg_{int(time.time())}_{uuid.uuid4().hex[:6]}"
-    name = getattr(config, "IMAGE_MODEL", "lightning")
+    name = config.IMAGE_MODEL
     prof = IMAGE_PROFILES.get(name)
     if prof is None:
         print(f" -> [Unknown IMAGE_MODEL '{name}', using 'lightning']")

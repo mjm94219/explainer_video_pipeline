@@ -1,0 +1,102 @@
+{
+ "name": "meter",
+ "description": "Horizontal bars that fill to different lengths so the viewer sees at a glance which is bigger or faster. Use to compare 2 to 5 things on one measure (speed, size, cost, capacity) when exact numbers are not the point.",
+ "params": {
+  "bars": "list of 2 to 5 objects like {\"name\": \"SSD\", \"value\": 80, \"label\": \"very fast\"}; value is a plain number, the biggest value fills its bar fully, label is a very short text shown at the end of the bar (optional)",
+  "caption": "short caption shown under the bars (optional)"
+ },
+ "setup": {
+  "bars": "list(P.bars,[{name:'A',value:60,label:''},{name:'B',value:30,label:''}],5).map(b=>typeof b==='object'?b:{name:String(b),value:50,label:''})",
+  "n": "bars.length",
+  "maxV": "Math.max(1,...bars.map(b=>Math.abs(num(b.value))))"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "style": {
+    "display": "flex",
+    "flex-direction": "column",
+    "gap": "{{V?'3vh':'2.6vh'}}",
+    "width": "100%"
+   },
+   "children": [
+    {
+     "each": "bars",
+     "as": "b",
+     "tag": "div",
+     "style": {
+      "display": "flex",
+      "align-items": "center",
+      "gap": "1.4vw"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.5)/0.5)",
+      "q": "ease((t-T_IN-i*0.5-0.2)/1.6)"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateX(${(1-k)*-3}vw)`"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "text": "{{String(b.name||'')}}",
+       "style": {
+        "width": "{{V?'24%':'18%'}}",
+        "text-align": "right",
+        "font-size": "{{V?'3.6vh':'3.4vh'}}",
+        "font-weight": "700",
+        "color": "{{COLORS[i%5]}}"
+       }
+      },
+      {
+       "tag": "div",
+       "style": {
+        "flex": "1 1 0",
+        "height": "{{V?'5vh':'5.4vh'}}",
+        "border-radius": "1.4vh",
+        "background": "rgba(255,255,255,.12)",
+        "overflow": "hidden"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "style": {
+          "height": "100%",
+          "border-radius": "1.4vh",
+          "background": "{{COLORS[i%5]}}"
+         },
+         "bind": {
+          "style.width": "(100*Math.abs(num(b.value))/maxV*q)+'%'",
+          "style.filter": "`brightness(${1.05+0.2*Math.sin(t*3+i)})`"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "div",
+       "text": "{{String(b.label||'')}}",
+       "style": {
+        "width": "{{V?'22%':'16%'}}",
+        "font-size": "{{V?'2.8vh':'3vh'}}",
+        "color": "#e6edf7",
+        "font-weight": "600"
+       },
+       "bind": {
+        "style.opacity": "q>0.8 ? 1 : 0"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-(T_IN+n*0.5+1.4))/0.6)"
+   }
+  }
+ ]
+}

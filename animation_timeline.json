@@ -1,0 +1,128 @@
+{
+ "name": "timeline",
+ "description": "Events placed in order along a line (left to right, or top to bottom in portrait), each with a short time or label and a short description. Use for history, a sequence over time, a roadmap or stages of a process with dates or times.",
+ "params": {
+  "events": "list of 3 to 5 objects like {\"when\": \"1956\", \"what\": \"first hard drive\"}; when is 1 to 3 words (a year, a time, a stage), what is a short phrase of up to 5 words",
+  "caption": "short caption shown under the timeline (optional)"
+ },
+ "setup": {
+  "events": "list(P.events,[{when:'Start',what:'First event'},{when:'Then',what:'Second event'},{when:'Later',what:'Third event'}],5).map(e=>typeof e==='object'?e:{when:'',what:String(e)})",
+  "n": "events.length",
+  "endT": "T_IN+n*0.8+0.3"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "style": {
+    "display": "flex",
+    "flex-direction": "{{V?'column':'row'}}",
+    "width": "100%",
+    "align-items": "stretch",
+    "gap": "0"
+   },
+   "children": [
+    {
+     "each": "events",
+     "as": "e",
+     "tag": "div",
+     "style": {
+      "flex": "1 1 0",
+      "display": "flex",
+      "flex-direction": "{{V?'row':'column'}}",
+      "align-items": "center",
+      "gap": "{{V?'2vw':'0'}}",
+      "min-width": "0"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.8)/0.6)",
+      "isLive": "t>endT && Math.floor((t-endT)/1.4)%n===i"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translate${V?'X':'Y'}(${(1-k)*(V?-3:3)}${V?'vw':'vh'})`"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "text": "{{String(e.when||'')}}",
+       "style": {
+        "font-size": "{{V?'4.2vh':'4.6vh'}}",
+        "font-weight": "800",
+        "color": "{{COLORS[i%5]}}",
+        "text-align": "{{V?'right':'center'}}",
+        "width": "{{V?'26%':'100%'}}",
+        "flex": "{{V?'0 0 auto':'0 0 auto'}}"
+       }
+      },
+      {
+       "tag": "div",
+       "style": {
+        "position": "relative",
+        "width": "{{V?'6vh':'100%'}}",
+        "height": "{{V?'auto':'6vh'}}",
+        "align-self": "{{V?'stretch':'auto'}}",
+        "flex": "{{V?'0 0 6vh':'0 0 6vh'}}"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "style": {
+          "position": "absolute",
+          "background": "rgba(255,255,255,.3)",
+          "border-radius": ".6vh",
+          "left": "{{V?'calc(50% - .4vh)':(i===0?'50%':'0')}}",
+          "right": "{{V?'auto':(i===n-1?'50%':'0')}}",
+          "top": "{{V?(i===0?'50%':'0'):'calc(50% - .4vh)'}}",
+          "bottom": "{{V?(i===n-1?'50%':'0'):'auto'}}",
+          "width": "{{V?'.8vh':'auto'}}",
+          "height": "{{V?'auto':'.8vh'}}"
+         }
+        },
+        {
+         "tag": "div",
+         "style": {
+          "position": "absolute",
+          "left": "50%",
+          "top": "50%",
+          "width": "3.8vh",
+          "height": "3.8vh",
+          "margin": "-1.9vh 0 0 -1.9vh",
+          "border-radius": "50%",
+          "background": "{{COLORS[i%5]}}"
+         },
+         "bind": {
+          "style.boxShadow": "`0 0 ${isLive?3.4:1.6}vh ${COLORS[i%5]}`",
+          "style.transform": "`scale(${isLive?1.35:1})`"
+         }
+        }
+       ]
+      },
+      {
+       "tag": "div",
+       "text": "{{String(e.what||'')}}",
+       "class": "pt",
+       "style": {
+        "font-size": "{{V?'3.2vh':'3vh'}}",
+        "text-align": "{{V?'left':'center'}}",
+        "margin-top": "{{V?'0':'1.2vh'}}",
+        "flex": "{{V?'1 1 0':'0 0 auto'}}",
+        "max-width": "100%"
+       },
+       "bind": {
+        "style.background": "isLive ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.08)'"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-endT)/0.6)"
+   }
+  }
+ ]
+}

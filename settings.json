@@ -1,0 +1,57 @@
+{
+  "_help": "All the settings you may want to change. Edit the values, keep the names. Keys that start with _ are notes and are ignored. The README has a table explaining each setting.",
+
+  "planner": {
+    "_help": "The AI model that plans the scenes. NARRATION_WORDS is the length of each scene's narration (about WORDS_PER_SECOND words per second); a scene can override it with \"words\" in topic.json.",
+    "LLM_MODEL": "qwen3:14b",
+    "OLLAMA_THINK": false,
+    "OLLAMA_NUM_CTX": 16384,
+    "OLLAMA_NUM_PREDICT": 8192,
+    "NARRATION_WORDS": "50 to 70",
+    "WORDS_PER_SECOND": 2.6,
+    "SCENE_WORDS_MIN": 10,
+    "SCENE_WORDS_MAX": 400
+  },
+
+  "services": {
+    "_help": "Where Ollama and ComfyUI run, and how long to wait for ComfyUI (seconds).",
+    "OLLAMA_URL": "http://127.0.0.1:11434",
+    "COMFY_URL": "http://127.0.0.1:8188",
+    "COMFY_SUBMIT_TIMEOUT": 60,
+    "COMFY_POLL_TIMEOUT": 30,
+    "COMFY_RENDER_DEADLINE": 600
+  },
+
+  "voice": {
+    "_help": "Kokoro voice and speed (0.9 = slower, 1.1 = faster). US male voices: am_adam, am_michael, am_eric, am_onyx, am_echo, am_fenrir, am_puck. WHISPER_MODEL_SIZE times the subtitles.",
+    "EN_TTS_VOICE": "am_adam",
+    "EN_TTS_SPEED": 1.0,
+    "WHISPER_MODEL_SIZE": "base"
+  },
+
+  "pictures": {
+    "_help": "IMAGE_MODEL is sdxl_base (best quality) or lightning (fast, less detail). DEFAULT_BLUR is used for \"blur\": true in topic.json. BACKGROUND_ZOOM_MAX: 1.0 = no zoom, 1.10 = 10% slow zoom.",
+    "IMAGE_MODEL": "sdxl_base",
+    "DEFAULT_BLUR": 20.0,
+    "BACKGROUND_ZOOM_MAX": 1.10
+  },
+
+  "video": {
+    "_help": "DEFAULT_WIDTH, DEFAULT_HEIGHT and DEFAULT_FPS are used when a template in video_template.json does not say. SUBTITLE_FONT_SCALE is the subtitle size as a fraction of the video height (keep it at or below 0.055). MUSIC_VOLUME: 1.0 = full.",
+    "DEFAULT_WIDTH": 1920,
+    "DEFAULT_HEIGHT": 1080,
+    "DEFAULT_FPS": 30,
+    "DEFAULT_ANIMATION": "flow",
+    "SUBTITLE_FONT_SCALE": 0.055,
+    "TAIL_PAD_SEC": 0.3,
+    "VIDEO_BITRATE": "16M",
+    "AUDIO_BITRATE": "256k",
+    "MUSIC_VOLUME": 0.22
+  },
+
+  "files": {
+    "_help": "PROJECTS_FOLDER is where project folders are created (a folder name next to the scripts, or a full path). SUPPORTED_AUDIO_EXTENSIONS are the soundtrack formats accepted for background music.",
+    "PROJECTS_FOLDER": "projects",
+    "SUPPORTED_AUDIO_EXTENSIONS": [".mp3", ".wav", ".aac", ".flac", ".m4a", ".ogg"]
+  }
+}

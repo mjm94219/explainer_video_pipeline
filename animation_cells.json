@@ -1,0 +1,238 @@
+{
+ "name": "cells",
+ "description": "A row of storage cells being written one by one: a cell holding electrons is a 1, an empty cell is a 0, then a read scan. Use for memory or flash storage (SSD, USB stick, RAM) holding bits.",
+ "params": {
+  "bits": "a binary string of 6 to 10 digits; each 1 is a cell that gets electrons",
+  "one_label": "legend text for a charged cell",
+  "zero_label": "legend text for an empty cell",
+  "write_label": "short label for the write voltage",
+  "read_label": "short label shown while the cells are read"
+ },
+ "setup": {
+  "bits": "bitsOf(P.bits,'10110010',10)",
+  "n": "bits.length",
+  "W": "1000",
+  "H": "V?700:480",
+  "cw": "Math.min(90,880/n-12)",
+  "gap": "12",
+  "x0": "(W-(n*cw+(n-1)*gap))/2",
+  "cy": "H/2+10",
+  "PER": "0.8",
+  "WR": "n*PER",
+  "RD": "(n+3)*0.35",
+  "CYC": "WR+0.8+RD+1.4"
+ },
+ "frame": {
+  "intro": "ease((t-T_IN)/0.6)",
+  "tw0": "T_IN+0.4",
+  "tau": "t<tw0 ? -1 : (t-tw0)%CYC",
+  "wi": "tau<0 ? 0 : clamp(tau/PER,0,n)",
+  "writing": "tau>=0 && tau<WR",
+  "tr": "tau-WR-0.8",
+  "reading": "tr>=0 && tr<RD",
+  "fade": "tau>WR+0.8+RD ? 1-ease((tau-WR-0.8-RD)/1.2) : 1",
+  "bx": "x0+clamp(wi,0,n-1)*(cw+gap)+cw/2",
+  "u": "reading ? tr/0.35 : 0"
+ },
+ "tree": [
+  {
+   "tag": "svg",
+   "attrs": {
+    "viewBox": "0 0 {{W}} {{H}}"
+   },
+   "style": {
+    "width": "100%",
+    "max-height": "{{V?'62vh':'58vh'}}"
+   },
+   "children": [
+    {
+     "each": "n",
+     "tag": "fragment",
+     "vars": {
+      "bit": "bits[i]",
+      "x": "x0+i*(cw+gap)"
+     },
+     "frame": {
+      "k": "ease(wi-i)*fade",
+      "hot": "reading && Math.floor(u)===i"
+     },
+     "children": [
+      {
+       "tag": "rect",
+       "attrs": {
+        "x": "{{x}}",
+        "y": "{{cy-cw/2}}",
+        "width": "{{cw}}",
+        "height": "{{cw}}",
+        "rx": 10,
+        "stroke-width": 4
+       },
+       "bind": {
+        "style.opacity": "intro",
+        "attr.stroke": "hot ? '#ffa94d' : (bit==='1' && k>.3 ? '#4aa8ff' : '#8fa3c7')",
+        "attr.fill": "hot ? 'rgba(255,169,77,.35)' : 'rgba(14,22,44,.78)'"
+       }
+      },
+      {
+       "each": "bit==='1' ? 3 : 0",
+       "index": "j",
+       "tag": "circle",
+       "attrs": {
+        "r": "{{cw*.09}}",
+        "fill": "#4aa8ff"
+       },
+       "vars": {
+        "bx": "x+cw*(.28+.22*j)",
+        "by": "cy+(j===1?-cw*.12:cw*.1)"
+       },
+       "bind": {
+        "style.opacity": "k",
+        "attr.cx": "bx+Math.sin(t*7+j*2+i)*2.5",
+        "attr.cy": "by+Math.cos(t*6+j+i)*2.5+(1-ease(wi-i))*-(cy-90)"
+       }
+      },
+      {
+       "tag": "text",
+       "attrs": {
+        "x": "{{x+cw/2}}",
+        "y": "{{cy+cw/2+52}}",
+        "text-anchor": "middle",
+        "font-size": 40,
+        "font-weight": 700,
+        "fill": "{{bit==='1'?'#ffd84a':'#7fb6ff'}}"
+       },
+       "text": "{{bit}}",
+       "bind": {
+        "style.opacity": "ease(wi-i-.3)*fade"
+       }
+      }
+     ]
+    },
+    {
+     "tag": "rect",
+     "attrs": {
+      "y": 40,
+      "width": 150,
+      "height": 44,
+      "rx": 12,
+      "fill": "#ffd84a"
+     },
+     "bind": {
+      "attr.x": "bx-75",
+      "style.opacity": "writing?1:0"
+     }
+    },
+    {
+     "tag": "text",
+     "attrs": {
+      "y": 30,
+      "text-anchor": "middle",
+      "font-size": 28,
+      "font-weight": 600,
+      "fill": "#ffd84a"
+     },
+     "text": "{{String(P.write_label||'Write voltage')}}",
+     "bind": {
+      "attr.x": "bx",
+      "style.opacity": "writing?1:0"
+     }
+    },
+    {
+     "tag": "path",
+     "attrs": {
+      "stroke": "#ffd84a",
+      "stroke-width": 5,
+      "fill": "none"
+     },
+     "bind": {
+      "style.opacity": "writing?1:0",
+      "attr.d": "`M${bx} 90 L${bx} ${cy-cw/2-8} M${bx-14} ${cy-cw/2-24} L${bx} ${cy-cw/2-6} L${bx+14} ${cy-cw/2-24}`"
+     }
+    },
+    {
+     "tag": "rect",
+     "attrs": {
+      "y": "{{cy-cw/2-18}}",
+      "width": 6,
+      "height": "{{cw+36}}",
+      "fill": "#ffa94d",
+      "rx": 3
+     },
+     "bind": {
+      "attr.x": "x0+u*(cw+gap)-gap/2",
+      "style.opacity": "(reading && u<=n)?1:0"
+     }
+    },
+    {
+     "tag": "text",
+     "attrs": {
+      "x": "{{W/2}}",
+      "y": "{{cy-cw/2-34}}",
+      "text-anchor": "middle",
+      "font-size": 30,
+      "font-weight": 600,
+      "fill": "#ffa94d"
+     },
+     "text": "{{String(P.read_label||'Reading the cells')}}",
+     "bind": {
+      "style.opacity": "(reading && u<=n)?1:0"
+     }
+    },
+    {
+     "tag": "circle",
+     "attrs": {
+      "cx": 250,
+      "cy": "{{H-30}}",
+      "r": 11,
+      "fill": "#4aa8ff"
+     },
+     "bind": {
+      "style.opacity": "intro"
+     }
+    },
+    {
+     "tag": "text",
+     "attrs": {
+      "x": 275,
+      "y": "{{H-19}}",
+      "font-size": 30,
+      "fill": "#fff"
+     },
+     "text": "{{String(P.one_label||'Electrons = 1')}}",
+     "bind": {
+      "style.opacity": "intro"
+     }
+    },
+    {
+     "tag": "rect",
+     "attrs": {
+      "x": 560,
+      "y": "{{H-42}}",
+      "width": 24,
+      "height": 24,
+      "rx": 5,
+      "fill": "none",
+      "stroke": "#8fa3c7",
+      "stroke-width": 3
+     },
+     "bind": {
+      "style.opacity": "intro"
+     }
+    },
+    {
+     "tag": "text",
+     "attrs": {
+      "x": 596,
+      "y": "{{H-19}}",
+      "font-size": 30,
+      "fill": "#fff"
+     },
+     "text": "{{String(P.zero_label||'No electrons = 0')}}",
+     "bind": {
+      "style.opacity": "intro"
+     }
+    }
+   ]
+  }
+ ]
+}

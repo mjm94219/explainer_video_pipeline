@@ -18,11 +18,11 @@ import config
 
 
 def _voice() -> str:
-    return str(getattr(config, "EN_TTS_VOICE", "am_adam"))
+    return str(config.EN_TTS_VOICE)
 
 
 def _speed() -> float:
-    return float(getattr(config, "EN_TTS_SPEED", 1.0))
+    return float(config.EN_TTS_SPEED)
 
 
 def _clamp_speed(s: float) -> float:
@@ -35,8 +35,8 @@ def _edge_rate(speed: float) -> str:
 
 
 def _respell(text: str) -> str:
-    """Swaps words for the spelling the voice pronounces correctly (config.PRONUNCIATIONS)."""
-    for word, spoken in getattr(config, "PRONUNCIATIONS", {}).items():
+    """Swaps words for the spelling the voice pronounces correctly (pronunciation-en.json)."""
+    for word, spoken in config.load_pronunciations().items():
         text = re.sub(r"(?<![A-Za-z])" + re.escape(word) + r"(?![A-Za-z])", spoken, text, flags=re.IGNORECASE)
     return text
 

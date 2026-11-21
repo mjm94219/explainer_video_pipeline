@@ -1,0 +1,189 @@
+{
+ "name": "prosCons",
+ "description": "Two columns side by side: advantages with ticks and disadvantages with crosses. Use for the good and bad sides of one thing, or a trade-off, when the narration lists benefits and drawbacks.",
+ "params": {
+  "pros": "list of 2 to 4 short advantages (2 to 6 words each)",
+  "cons": "list of 2 to 4 short disadvantages (2 to 6 words each)",
+  "pros_title": "short heading for the good column, for example 'SSD: good' (optional, default Pros)",
+  "cons_title": "short heading for the bad column, for example 'SSD: bad' (optional, default Cons)",
+  "caption": "short caption shown under the columns (optional)"
+ },
+ "setup": {
+  "endT": "T_IN+0.8+Math.max(list(P.pros,['x'],4).length,list(P.cons,['x'],4).length)*0.6+1"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "class": "row",
+   "style": {
+    "align-items": "stretch",
+    "gap": "3vw",
+    "flex-direction": "{{V?'column':'row'}}"
+   },
+   "children": [
+    {
+     "tag": "div",
+     "class": "card",
+     "style": {
+      "--c": "#2ee6c5",
+      "flex": "1 1 0",
+      "display": "flex",
+      "flex-direction": "column",
+      "align-items": "stretch",
+      "text-align": "left"
+     },
+     "vars": {
+      "pts": "list(P.pros,['Good point'],4).map(String)",
+      "ti": "P.pros_title||'Pros'",
+      "d": "0"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-d)/0.6)"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateY(${(1-k)*3+bob(t,d)*k}vh)`",
+      "style.backgroundImage": "sheen(t,d)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "text": "{{ti}}",
+       "style": {
+        "font-size": "{{V?'5vh':'4.6vh'}}",
+        "font-weight": "800",
+        "color": "#2ee6c5",
+        "margin-bottom": ".6vh"
+       }
+      },
+      {
+       "each": "pts",
+       "index": "j",
+       "as": "p",
+       "tag": "div",
+       "style": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "1.2vw",
+        "margin-top": "1.2vh"
+       },
+       "frame": {
+        "q": "ease((t-T_IN-d-0.5-j*0.6)/0.5)"
+       },
+       "bind": {
+        "style.opacity": "q",
+        "style.transform": "`translateX(${(1-q)*2*1}vw)`"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "class": "num",
+         "text": "✓",
+         "style": {
+          "--c": "#2ee6c5",
+          "width": "5vh",
+          "height": "5vh",
+          "font-size": "3vh"
+         }
+        },
+        {
+         "tag": "div",
+         "text": "{{p}}",
+         "style": {
+          "font-size": "{{V?'3.4vh':'3.2vh'}}",
+          "font-weight": "500"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "card",
+     "style": {
+      "--c": "#ff6b9d",
+      "flex": "1 1 0",
+      "display": "flex",
+      "flex-direction": "column",
+      "align-items": "stretch",
+      "text-align": "left"
+     },
+     "vars": {
+      "pts": "list(P.cons,['Bad point'],4).map(String)",
+      "ti": "P.cons_title||'Cons'",
+      "d": "0.8"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-d)/0.6)"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateY(${(1-k)*3+bob(t,d)*k}vh)`",
+      "style.backgroundImage": "sheen(t,d)"
+     },
+     "children": [
+      {
+       "tag": "div",
+       "text": "{{ti}}",
+       "style": {
+        "font-size": "{{V?'5vh':'4.6vh'}}",
+        "font-weight": "800",
+        "color": "#ff6b9d",
+        "margin-bottom": ".6vh"
+       }
+      },
+      {
+       "each": "pts",
+       "index": "j",
+       "as": "p",
+       "tag": "div",
+       "style": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "1.2vw",
+        "margin-top": "1.2vh"
+       },
+       "frame": {
+        "q": "ease((t-T_IN-d-0.5-j*0.6)/0.5)"
+       },
+       "bind": {
+        "style.opacity": "q",
+        "style.transform": "`translateX(${(1-q)*2*-1}vw)`"
+       },
+       "children": [
+        {
+         "tag": "div",
+         "class": "num",
+         "text": "✕",
+         "style": {
+          "--c": "#ff6b9d",
+          "width": "5vh",
+          "height": "5vh",
+          "font-size": "3vh"
+         }
+        },
+        {
+         "tag": "div",
+         "text": "{{p}}",
+         "style": {
+          "font-size": "{{V?'3.4vh':'3.2vh'}}",
+          "font-weight": "500"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-endT)/0.6)"
+   }
+  }
+ ]
+}

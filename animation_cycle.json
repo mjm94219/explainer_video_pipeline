@@ -1,0 +1,162 @@
+{
+ "name": "cycle",
+ "description": "3 or 4 labelled steps arranged in a loop with arrows going round and a glowing dot travelling along. Use for anything that repeats or runs in a loop (a process that starts again, a lifecycle, a feedback loop, load-use-save-repeat).",
+ "params": {
+  "items": "list of 3 or 4 short labels (1 to 3 words each) in the order they happen; the last one leads back to the first",
+  "center_label": "very short label for the middle of the loop, for example 'Repeat' (optional)",
+  "caption": "short caption shown under the loop (optional)"
+ },
+ "setup": {
+  "items": "list(P.items,['First','Second','Third'],4).map(String)",
+  "n": "items.length",
+  "W": "1000",
+  "H": "V?900:560",
+  "cx": "500",
+  "cy": "H/2",
+  "rx": "V?290:340",
+  "ry": "V?300:190",
+  "nw": "V?300:270",
+  "nh": "96",
+  "off": "n<=3?0.45:0.5",
+  "ang": "i=>(-90+i*360/n)*Math.PI/180",
+  "pt": "a=>[cx+rx*Math.cos(a),cy+ry*Math.sin(a)]",
+  "arc": "i=>{const a0=ang(i)+off,a1=ang(i+1)-off,N=14;let d='';for(let s=0;s<=N;s++){const a=a0+(a1-a0)*s/N,p=pt(a);d+=(s?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}const p=pt(a1),tx=-rx*Math.sin(a1),ty=ry*Math.cos(a1),l=Math.hypot(tx,ty),ux=tx/l,uy=ty/l,nx=-uy,ny=ux;const head=[p[0],p[1]].join(',')+' '+[p[0]-28*ux+14*nx,p[1]-28*uy+14*ny].join(',')+' '+[p[0]-28*ux-14*nx,p[1]-28*uy-14*ny].join(',');return {d,head};}",
+  "t0": "T_IN+n*0.7+0.3",
+  "segT": "1.2"
+ },
+ "frame": {
+  "u": "t<t0 ? -1 : ((t-t0)/segT)%n",
+  "dotA": "u<0 ? ang(0) : ang(0)+u*2*Math.PI/n"
+ },
+ "tree": [
+  {
+   "tag": "svg",
+   "attrs": {
+    "viewBox": "0 0 {{W}} {{H}}"
+   },
+   "style": {
+    "width": "100%",
+    "max-height": "{{V?'66vh':'58vh'}}"
+   },
+   "children": [
+    {
+     "each": "n",
+     "tag": "fragment",
+     "vars": {
+      "a": "arc(i)"
+     },
+     "children": [
+      {
+       "tag": "path",
+       "attrs": {
+        "d": "{{a.d}}",
+        "fill": "none",
+        "stroke": "rgba(255,255,255,.55)",
+        "stroke-width": 6,
+        "stroke-linecap": "round"
+       },
+       "bind": {
+        "style.opacity": "ease((t-T_IN-(i+.5)*0.7)/0.5)"
+       }
+      },
+      {
+       "tag": "polygon",
+       "attrs": {
+        "points": "{{a.head}}",
+        "fill": "rgba(255,255,255,.8)"
+       },
+       "bind": {
+        "style.opacity": "ease((t-T_IN-(i+.5)*0.7)/0.5)"
+       }
+      }
+     ]
+    },
+    {
+     "tag": "circle",
+     "attrs": {
+      "r": 15,
+      "fill": "#fff"
+     },
+     "style": {
+      "filter": "drop-shadow(0 0 12px #7cc8ff)"
+     },
+     "bind": {
+      "attr.cx": "pt(dotA)[0]",
+      "attr.cy": "pt(dotA)[1]",
+      "style.opacity": "u<0 ? 0 : 1"
+     }
+    },
+    {
+     "each": "items",
+     "tag": "g",
+     "vars": {
+      "p": "pt(ang(i))"
+     },
+     "attrs": {
+      "transform": "{{`translate(${p[0]} ${p[1]})`}}"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-i*0.7)/0.6)",
+      "hot": "u>=0 && Math.min(((u-i)%n+n)%n, n-(((u-i)%n+n)%n))<0.3"
+     },
+     "bind": {
+      "style.opacity": "k"
+     },
+     "children": [
+      {
+       "tag": "rect",
+       "attrs": {
+        "x": "{{-nw/2}}",
+        "y": "{{-nh/2}}",
+        "width": "{{nw}}",
+        "height": "{{nh}}",
+        "rx": 20,
+        "stroke-width": 5
+       },
+       "bind": {
+        "attr.stroke": "COLORS[i%5]",
+        "attr.fill": "hot ? 'rgba(255,255,255,.22)' : 'rgba(14,22,44,.85)'"
+       }
+      },
+      {
+       "tag": "text",
+       "attrs": {
+        "x": 0,
+        "y": 12,
+        "text-anchor": "middle",
+        "font-size": 36,
+        "font-weight": 700,
+        "fill": "#fff"
+       },
+       "text": "{{item}}"
+      }
+     ]
+    },
+    {
+     "tag": "text",
+     "if": "P.center_label",
+     "attrs": {
+      "x": "{{cx}}",
+      "y": "{{cy+12}}",
+      "text-anchor": "middle",
+      "font-size": 40,
+      "font-weight": 700,
+      "fill": "#cfd9ea"
+     },
+     "text": "{{String(P.center_label)}}",
+     "bind": {
+      "style.opacity": "ease((t-T_IN-n*0.7)/0.6)"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-t0)/0.6)"
+   }
+  }
+ ]
+}

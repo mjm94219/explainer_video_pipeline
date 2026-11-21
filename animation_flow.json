@@ -1,0 +1,119 @@
+{
+ "name": "flow",
+ "description": "General-purpose: 3 to 5 labelled cards joined by arrows with a glowing pulse travelling along them. Use for any process, pipeline or path (for example electricity from outlet to CPU, a request through servers, stages of a recipe).",
+ "params": {
+  "labels": "list of 3 to 5 short labels (1 to 3 words each) in the order the narration mentions them",
+  "caption": "short caption shown under the chain (optional)"
+ },
+ "setup": {
+  "labels": "list(P.labels,['First','Second','Third'],5).map(String)",
+  "n": "labels.length",
+  "STEP": "0.7"
+ },
+ "frame": {
+  "t0": "T_IN+n*STEP+0.3",
+  "seg": "1.1",
+  "loop": "(n-1)*seg+0.8",
+  "pulsing": "t>=t0 && n>=2",
+  "u": "((t-t0)%loop)/seg",
+  "pi": "Math.max(0,Math.min(Math.floor(u),n-2))",
+  "pf": "ease(u-pi)"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "class": "row",
+   "id": "chain",
+   "style": {
+    "position": "relative",
+    "flex-direction": "{{V?'column':'row'}}"
+   },
+   "children": [
+    {
+     "each": "labels",
+     "tag": "fragment",
+     "children": [
+      {
+       "tag": "div",
+       "class": "card",
+       "id": "card",
+       "style": {
+        "--c": "{{COLORS[i%5]}}",
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "center",
+        "font-size": "{{V?'4.2vh':'3.6vh'}}",
+        "min-height": "{{V?'11vh':'16vh'}}",
+        "width": "{{V?'70%':'auto'}}",
+        "flex": "{{V?'0 0 auto':'1 1 0'}}"
+       },
+       "text": "{{item}}",
+       "frame": {
+        "k": "ease((t-T_IN-i*STEP)/0.6)"
+       },
+       "bind": {
+        "style.opacity": "k",
+        "style.transform": "`translateY(${(1-k)*3+bob(t,i)*k}vh) scale(${.92+.08*k})`",
+        "style.boxShadow": "`0 0 ${2.2+1.2*Math.sin(t*2.2+i)}vh var(--c), inset 0 0 1.6vh rgba(255,255,255,.06)`",
+        "style.filter": "(pulsing && ((i===pi && pf<.5)||(i===pi+1 && pf>=.5))) ? 'brightness(1.35)' : 'none'"
+       }
+      },
+      {
+       "tag": "div",
+       "class": "link",
+       "if": "i<n-1",
+       "style": {
+        "width": "{{V?'.7vh':''}}",
+        "height": "{{V?'6vh':''}}",
+        "flex": "{{V?'':'0 0 5vw'}}"
+       },
+       "frame": {
+        "k": "ease((t-T_IN-(i+.5)*STEP)/0.5)"
+       },
+       "bind": {
+        "style.opacity": "k"
+       },
+       "children": [
+        {
+         "each": 3,
+         "index": "j",
+         "tag": "div",
+         "class": "sp",
+         "frame": {
+          "f": "(t*0.7+j/3+i*.2)%1"
+         },
+         "bind": {
+          "style.left": "V ? '50%' : (f*100)+'%'",
+          "style.top": "V ? (f*100)+'%' : '50%'",
+          "style.opacity": "k*Math.sin(f*Math.PI)"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "tag": "div",
+     "class": "pulse",
+     "frame": {
+      "ca": "pulsing ? mid(refs.card[pi],refs.chain[0]) : {x:0,y:0}",
+      "cb": "pulsing ? mid(refs.card[pi+1],refs.chain[0]) : {x:0,y:0}"
+     },
+     "bind": {
+      "style.opacity": "(pulsing && u<=n-1) ? 1 : 0",
+      "style.left": "(ca.x+(cb.x-ca.x)*pf)+'px'",
+      "style.top": "(ca.y+(cb.y-ca.y)*pf)+'px'"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-(T_IN+n*STEP))/0.6)"
+   }
+  }
+ ]
+}

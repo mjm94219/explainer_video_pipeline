@@ -1,9 +1,10 @@
 """
 Animation Library Loader
-Reads the animation blocks from blocks.html (the animation-meta JSON at its top), builds the catalog text
+Reads every animation_*.json file next to this script (one file per animation: name, description, params AND how it is drawn);
+animator.html is the generic engine that draws them. Builds the catalog text
 the LLM planner chooses from, and resolves a scene's chosen animation + parameters.
 
-To add a block: edit blocks.html (see blocks_README.md). No pipeline code needs to change.
+To add an animation: add a file animation_<name>.json (see animation_README.md). No code needs to change.
 """
 
 import re
@@ -11,52 +12,53 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from config import EXPLAINER_BLOCKS_HTML
+from config import EXPLAINER_ANIMATOR_HTML, EXPLAINER_ANIMATION_DIR, ANIMATION_FILE_PATTERN, DEFAULT_ANIMATION
 
-_active_blocks_file: Path = EXPLAINER_BLOCKS_HTML
+_active_blocks_file: Path = EXPLAINER_ANIMATOR_HTML
 
-DEFAULT_ANIMATION = "flow"
 
 
 def load_catalog(blocks_file: Optional[Path] = None, quiet: bool = False) -> Dict[str, Dict[str, Any]]:
-    """Returns {name: {"name", "description", "params", "path", ...}} for every block listed in the active blocks page."""
-    blocks_path = Path(blocks_file or _active_blocks_file)
+    """Returns {name: {"name", "description", "params", "path", "spec", ...}} for every animation_*.json file."""
+    page_path = Path(blocks_file or _active_blocks_file)
     catalog: Dict[str, Dict[str, Any]] = {}
-    if not blocks_path.is_file():
+    try:
+        if not page_path.is_file():
+            raise ValueError(f"engine page not found: {page_path}")
+        if "setTime" not in page_path.read_text(encoding="utf-8"):
+            raise ValueError("page has no setTime(t) function")
+    except Exception as e:
         if not quiet:
-            print(f" -> [animations] Blocks page not found: {blocks_path}")
+            print(f" -> [animations] Skipping {page_path.name}: {e}")
         return catalog
 
-    # HTML animations (rendered by html_engine.py): the metadata sits in <script type="application/json" id="animation-meta">
-    for path in [blocks_path]:
+    folder = EXPLAINER_ANIMATION_DIR if page_path == EXPLAINER_ANIMATOR_HTML else page_path.parent
+    for json_path in sorted(folder.glob(ANIMATION_FILE_PATTERN)):
         try:
-            m = re.search(r'<script[^>]*id="animation-meta"[^>]*>(.*?)</script>', path.read_text(encoding="utf-8"), re.S)
-            meta = json.loads(m.group(1)) if m else None
-            if not isinstance(meta, dict) or not (str(meta.get("description", "")).strip() or meta.get("blocks")):
-                raise ValueError("missing animation-meta JSON with a description (or a blocks list)")
-            if "setTime" not in path.read_text(encoding="utf-8"):
-                raise ValueError("page has no setTime(t) function")
+            item = json.loads(json_path.read_text(encoding="utf-8-sig"))
+            if not isinstance(item, dict):
+                raise ValueError("expected one JSON object")
+            name = str(item.get("name") or json_path.stem[len("animation_"):]).strip()
+            if not name:
+                raise ValueError("no name")
+            if not str(item.get("description", "")).strip():
+                raise ValueError("needs a \"description\"")
+            if not isinstance(item.get("tree"), list):
+                raise ValueError("needs a \"tree\" (how to draw it)")
+            if name in catalog and not quiet:
+                print(f" -> [animations] '{name}' is defined twice; {json_path.name} replaces the earlier one.")
+            catalog[name] = {
+                "name": name, "kind": "html",
+                "description": str(item["description"]).strip(),
+                "hidden": bool(item.get("hidden")),
+                "params": {str(k): str(v) for k, v in (item.get("params") or {}).items()},
+                "path": page_path,
+                "spec": {k: v for k, v in item.items() if k in ("setup", "frame", "tree", "heading")},
+                "fixed": {},
+            }
         except Exception as e:
             if not quiet:
-                print(f" -> [animations] Skipping {path.name}: {e}")
-            continue
-        # A page can offer one animation, or several "blocks" that share the page (the blocks pages): each block becomes
-        # its own catalog entry and the block name is passed to the page as the "block" parameter.
-        items = meta["blocks"] if isinstance(meta.get("blocks"), list) else [meta]
-        for item in items:
-            try:
-                name = str(item.get("name") or path.stem).strip()
-                catalog[name] = {
-                    "name": name, "kind": "html",
-                    "description": str(item["description"]).strip(),
-                    "hidden": bool(item.get("hidden")),
-                    "params": {str(k): str(v) for k, v in (item.get("params") or {}).items()},
-                    "path": path,
-                    "fixed": {"block": name} if isinstance(meta.get("blocks"), list) else {},
-                }
-            except Exception as e:
-                if not quiet:
-                    print(f" -> [animations] Skipping a block in {path.name}: {e}")
+                print(f" -> [animations] Skipping {json_path.name}: {e}")
     return catalog
 
 

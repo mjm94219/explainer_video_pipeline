@@ -1,0 +1,87 @@
+{
+ "name": "bigtext",
+ "description": "One big phrase, quote or definition that appears word by word in large type, with an optional small line above and below. Use for a key message, a definition, a rule of thumb or a memorable sentence, when no diagram is needed.",
+ "params": {
+  "text": "the phrase to show, up to about 12 words",
+  "highlight": "one or two words from the phrase to colour (optional)",
+  "label": "very short line above the phrase, for example 'Remember' (optional)",
+  "caption": "short line under the phrase (optional)"
+ },
+ "setup": {
+  "words": "String(P.text||'Your key message here').split(/\\s+/).filter(Boolean)",
+  "n": "words.length",
+  "hl": "String(P.highlight||'').toLowerCase().split(/[\\s,;]+/).filter(Boolean)",
+  "len": "String(P.text||'Your key message here').length",
+  "size": "V ? (len<40?9:len<80?7:5.6) : (len<40?10:len<80?8:6.4)",
+  "endT": "T_IN+0.5+n*0.22+0.4"
+ },
+ "tree": [
+  {
+   "tag": "div",
+   "text": "{{String(P.label||'')}}",
+   "style": {
+    "font-size": "3.2vh",
+    "letter-spacing": ".3em",
+    "text-transform": "uppercase",
+    "color": "#9fb3d1",
+    "font-weight": "700"
+   },
+   "bind": {
+    "style.opacity": "ease((t-T_IN)/0.6)"
+   }
+  },
+  {
+   "tag": "div",
+   "style": {
+    "display": "flex",
+    "flex-wrap": "wrap",
+    "justify-content": "center",
+    "gap": "{{size*0.12}}vh {{size*0.28}}vh",
+    "width": "92%"
+   },
+   "children": [
+    {
+     "each": "words",
+     "as": "w",
+     "tag": "span",
+     "text": "{{w}}",
+     "style": {
+      "font-size": "{{size}}vh",
+      "font-weight": "800",
+      "line-height": "1.1",
+      "text-shadow": "0 .5vh 2vh rgba(0,0,0,.65)",
+      "color": "{{hl.includes(w.toLowerCase().replace(/[^a-z0-9]/g,'')) ? '#ffd84a' : '#fff'}}",
+      "display": "inline-block"
+     },
+     "frame": {
+      "k": "ease((t-T_IN-0.5-i*0.22)/0.5)"
+     },
+     "bind": {
+      "style.opacity": "k",
+      "style.transform": "`translateY(${(1-k)*3}vh) scale(${.9+.1*k})`"
+     }
+    }
+   ]
+  },
+  {
+   "tag": "div",
+   "style": {
+    "height": "1vh",
+    "border-radius": "1vh",
+    "background": "linear-gradient(90deg,#4aa8ff,#2ee6c5,#ffb347)",
+    "margin-top": "1vh"
+   },
+   "bind": {
+    "style.width": "(60*ease((t-endT+0.4)/0.8))+'%'"
+   }
+  },
+  {
+   "tag": "div",
+   "class": "cap",
+   "text": "{{P.caption||''}}",
+   "bind": {
+    "style.opacity": "ease((t-endT)/0.6)"
+   }
+  }
+ ]
+}

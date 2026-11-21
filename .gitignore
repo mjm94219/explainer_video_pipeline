@@ -10,4 +10,14 @@ projects/
 kokoro-v1.0.onnx
 voices-v1.0.bin
 
-# Local notes
+# Local notes, run logs and old files kept for reference
+runs/
+_unused/
+_move.log
+*.bak
+*.old
+
+# Local editor / AI tool settings
+.opencode/
+opencode.json
+.claude/

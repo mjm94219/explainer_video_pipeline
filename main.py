@@ -17,7 +17,7 @@ from typing import Dict, Any
 from config import PROJECTS_BASE_DIR, SUBTITLE_FONT_SCALE
 from cli import get_project_config, calculate_social_safe_bounds
 from llm_planner import generate_script_manifest
-from tts_engine import EnglishTTS
+from tts_engine import EnglishTTS, _respell
 from subtitle_engine import transcribe_and_align
 from diffusion_engine import render_background_plate
 from infographic_engine import render_animation
@@ -124,7 +124,7 @@ def main():
     else:
         config = cli_result
 
-        # 1. Script Decomposition via Ollama (qwen2.5:14b)
+        # 1. Script Decomposition via Ollama (model set in settings.json)
         manifest = generate_script_manifest(config)
         scenes = manifest.get("scenes", [])
         if not scenes:
@@ -216,6 +216,13 @@ def main():
         if _is_newer(narration_txt_path, wav_path):
             print(f" -> [Edited] {narration_txt_path.name} changed after the voiceover was made: redoing voice, subtitles and infographic.")
             _drop(wav_path, ass_path, expected_mov)
+        # Pronunciation list (pronunciation-en.json) changed since this voiceover was made -> redo it
+        spoken_path = wav_path.with_suffix(".spoken.txt")
+        spoken_now = _respell(sc["narration"])
+        spoken_then = spoken_path.read_text(encoding="utf-8") if spoken_path.is_file() else sc["narration"]
+        if _valid_asset(wav_path) and spoken_now != spoken_then:
+            print(f" -> [Pronunciation] {wav_path.name} was made with different pronunciations: redoing voice, subtitles and infographic.")
+            _drop(wav_path, ass_path, expected_mov)
         if _is_newer(wav_path, ass_path):
             _drop(ass_path)
         if _is_newer(wav_path, expected_mov) or _is_newer(onscreen_path, expected_mov):
@@ -226,6 +233,7 @@ def main():
             print(f" -> [Skip] Voiceover already exists: {wav_path.name}")
         else:
             tts.synthesize(sc["narration"], wav_path)
+            spoken_path.write_text(spoken_now, encoding="utf-8")
         sc["audio_path"] = str(wav_path)
         sc["lang"] = "en"
         save_project_json(dirs["project_json"], project_state)
