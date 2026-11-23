@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 import config
+import srt_export
 
 TAIL_PAD_SEC = config.TAIL_PAD_SEC
 
@@ -31,6 +32,8 @@ def assemble_video(
     scenes_dir.mkdir(parents=True, exist_ok=True)
     output_mp4.parent.mkdir(parents=True, exist_ok=True)
     rendered_clips = []
+    tracks = []                    # [(seconds into the final video, that scene's captions_NN.ass)] for the .srt file
+    elapsed = 0.0
 
     for sc in scenes:
         sid = sc["scene_id"]
@@ -54,7 +57,7 @@ def assemble_video(
             # Hold the infographic's last frame (alpha preserved) so it never cuts the scene short
             f"[1:v]format=yuva444p,tpad=stop_mode=clone:stop_duration={dur:.2f}[info];"
             f"[bg][info]overlay=shortest=1[comp];"
-            f"[comp]subtitles='{ass_clean}'[vout];"
+            f"[comp]{('subtitles=' + chr(39) + ass_clean + chr(39)) if config.SHOW_SUBTITLES else 'null'}[vout];"
             # Pad narration with silence up to the full scene length
             f"[2:a]apad[aout]"
         )
@@ -70,6 +73,8 @@ def assemble_video(
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         sc["scene_cut_path"] = str(clip_path)
         rendered_clips.append(clip_path)
+        tracks.append((elapsed, sc.get("ass_path")))
+        elapsed += get_duration(clip_path)
 
     concat_txt = scenes_dir / "concat.txt"
     concat_txt.write_text("".join(f"file '{c.resolve()}'\n" for c in rendered_clips), encoding="utf-8")
@@ -95,5 +100,11 @@ def assemble_video(
     else:
         shutil.copy(str(rough_cut), str(output_mp4))
 
+    try:                              # captions for YouTube (upload as closed captions); never stops the export
+        srt_path = output_mp4.with_suffix(".srt")
+        lines = srt_export.write_srt(tracks, srt_path)
+        print(f" -> Subtitle file for YouTube: {srt_path.name} ({lines} lines)")
+    except Exception as e:
+        print(f" -> [warning] could not write the .srt file ({type(e).__name__}: {e})")
     print(f"\n[Success] Master Video Exported: {output_mp4.resolve()} ({get_duration(output_mp4):.1f}s)")
     return output_mp4

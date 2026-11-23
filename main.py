@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 
-from config import PROJECTS_BASE_DIR, SUBTITLE_FONT_SCALE
+from config import PROJECTS_BASE_DIR, SUBTITLE_FONT_SCALE, SHOW_HEADINGS, SHOW_CAPTIONS
 from cli import get_project_config, calculate_social_safe_bounds
 from llm_planner import generate_script_manifest
 from tts_engine import EnglishTTS, _respell
@@ -199,9 +199,11 @@ def main():
         if _valid_asset(onscreen_path):
             try:
                 edited_ui = json.loads(onscreen_path.read_text(encoding="utf-8-sig"))
-                for key in ("animation", "heading", "animation_params"):
+                for key in ("animation", "heading", "animation_params", "show_heading", "show_caption"):
                     if key in edited_ui:
                         sc[key] = edited_ui[key]
+                    elif key in ("show_heading", "show_caption"):
+                        sc.pop(key, None)       # removed from the file -> back to the settings.json switch
             except Exception as e:
                 print(f" -> [warning] {onscreen_path.name} is not valid JSON ({e}); using the planner's text.")
         else:
@@ -226,6 +228,15 @@ def main():
         if _is_newer(wav_path, ass_path):
             _drop(ass_path)
         if _is_newer(wav_path, expected_mov) or _is_newer(onscreen_path, expected_mov):
+            _drop(expected_mov)
+        # Top title / bottom caption: settings.json SHOW_HEADINGS / SHOW_CAPTIONS, unless the scene says show_heading / show_caption
+        show_heading = bool(sc["show_heading"]) if "show_heading" in sc else SHOW_HEADINGS
+        show_caption = bool(sc["show_caption"]) if "show_caption" in sc else SHOW_CAPTIONS
+        text_flags_now = f"heading={int(show_heading)} caption={int(show_caption)}"
+        flags_path = expected_mov.with_suffix(".text.txt")
+        flags_then = flags_path.read_text(encoding="utf-8").strip() if flags_path.is_file() else "heading=1 caption=1"
+        if _valid_asset(expected_mov) and text_flags_now != flags_then:
+            print(f" -> [Titles] {expected_mov.name} was made with different title/caption settings ({flags_then}): redoing the animation.")
             _drop(expected_mov)
 
         # Step A: Voice (Kokoro) -> Audio/Voiceover/English
@@ -270,7 +281,9 @@ def main():
                 key_points=sc.get("key_points"),
                 animation=sc.get("animation", ""),
                 anim_params=sc.get("animation_params"),
+                show_heading=show_heading, show_caption=show_caption,
             )
+            flags_path.write_text(text_flags_now, encoding="utf-8")
         sc["info_path"] = str(info_path)
         save_project_json(dirs["project_json"], project_state)
 

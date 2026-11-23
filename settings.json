@@ -37,11 +37,14 @@
   },
 
   "video": {
-    "_help": "DEFAULT_WIDTH, DEFAULT_HEIGHT and DEFAULT_FPS are used when a template in video_template.json does not say. SUBTITLE_FONT_SCALE is the subtitle size as a fraction of the video height (keep it at or below 0.055). MUSIC_VOLUME: 1.0 = full.",
+    "_help": "DEFAULT_WIDTH, DEFAULT_HEIGHT and DEFAULT_FPS are used when a template in video_template.json does not say. SHOW_SUBTITLES false leaves the subtitles out of the video (an .srt file for YouTube is still written next to it). SUBTITLE_FONT_SCALE is the subtitle size as a fraction of the video height (keep it at or below 0.055). MUSIC_VOLUME: 1.0 = full. SHOW_HEADINGS / SHOW_CAPTIONS: false hides the top title / the bottom caption in every scene (a scene can override with \"show_heading\" / \"show_caption\" in its onscreen_sNN.json).",
     "DEFAULT_WIDTH": 1920,
     "DEFAULT_HEIGHT": 1080,
     "DEFAULT_FPS": 30,
     "DEFAULT_ANIMATION": "flow",
+    "SHOW_HEADINGS": true,
+    "SHOW_CAPTIONS": false,
+    "SHOW_SUBTITLES": false,
     "SUBTITLE_FONT_SCALE": 0.055,
     "TAIL_PAD_SEC": 0.3,
     "VIDEO_BITRATE": "16M",

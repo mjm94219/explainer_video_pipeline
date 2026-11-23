@@ -80,15 +80,14 @@ A mistake in an expression is printed in the browser console as `[animator] erro
 
 ## Animations included
 
+**General-purpose** (use them for any topic):
+
 | name | shows |
 |---|---|
 | `flow` | 3 to 5 labelled cards joined by arrows with a glowing pulse (general purpose) |
-| `compare` | 2 or 3 columns side by side, each with a few short points |
+| `compare` | 2 or 3 columns side by side, each with a few short points. A scene about "A vs B" gets exactly 2 columns (the planner drops any extra column named after the heading) |
 | `steps` | a numbered list revealed one by one, then highlighted in turn |
 | `stat` | 1 to 3 big numbers that count up |
-| `bits` | smooth voltage wave turning into a square wave, then a scrolling stream of 1s and 0s |
-| `cells` | SSD cells: electrons written into cells (1), empty cells (0), then a read scan |
-| `ring` | spinning hard-drive platter with a ring of magnets (direction = 1 or 0) |
 | `stack` | layers stacked top to bottom, each wider than the last, revealed one by one then highlighted (rankings, levels, memory hierarchy) |
 | `meter` | horizontal bars that fill to different lengths, to compare speed or size at a glance |
 | `cycle` | 3 or 4 steps in a loop with arrows going round and a travelling dot (anything that repeats) |
@@ -96,4 +95,17 @@ A mistake in an expression is printed in the browser console as `[animator] erro
 | `prosCons` | two columns, advantages with ticks and disadvantages with crosses |
 | `bigtext` | one big phrase appearing word by word, with an optional highlighted word (key message, definition) |
 | `grid` | a grid of 4 to 9 tiles that appear one by one and then light up in turn (parts, components, types) |
+
+**Specific to the example topic "How computers work from electricity to storage"** (they draw that subject, so use them only for computer and storage topics; they also show what a custom animation can do):
+
+| name | shows |
+|---|---|
+| `bits` | smooth voltage wave turning into a square wave, then a scrolling stream of 1s and 0s |
+| `cells` | SSD cells: electrons written into cells (1), empty cells (0), then a read scan |
+| `ring` | spinning hard-drive platter with a ring of magnets (direction = 1 or 0) |
+
+**No animation:**
+
+| name | shows |
+|---|---|
 | `none` | nothing: the scene shows only its background and subtitles (not offered to the planner; use it by name, `"animation": "none"`) |

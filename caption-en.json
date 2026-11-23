@@ -1,0 +1,6 @@
+{
+  "_help": "Fixes for the SUBTITLES. The subtitles are what the speech-to-text model hears, so a word you respelled in pronunciation-en.json (or one it mishears) can show up wrongly. Left = the wrong word shown in the subtitles (one word, or several words in a row such as \"Comfy UI\", any capitals). Right = the word you want shown. Keys starting with _ are ignored. Subtitles are rebuilt whenever a voiceover is redone; to rebuild only the subtitles, delete Subtitles\\captions_NN.ass and run again.",
+  "ram": "RAM",
+  "nand": "NAND",
+  "say-ta": "SATA"
+}

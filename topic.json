@@ -11,9 +11,10 @@
       "image": "a laptop on a wooden desk"
     },
     {
-      "description": "The CPU turns electricity into 1s and 0s",
+      "description": "The CPU turns electricity into high voltage 1 and low voltage 0 and then binary values of 1s and 0s",
       "animation": "bits",
       "image": "a close-up of CPU on a motherboard",
+      "words": 100,
       "blur": 20
     },
     {

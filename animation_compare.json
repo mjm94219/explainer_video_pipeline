@@ -2,7 +2,7 @@
  "name": "compare",
  "description": "Side-by-side comparison of 2 or 3 things (A versus B), each with a few short points. Use when the narration contrasts options.",
  "params": {
-  "columns": "list of 2 or 3 objects like {\"name\": \"SSD\", \"points\": [\"fast\", \"no moving parts\"]}, 2 to 4 short points each",
+  "columns": "list of 2 or 3 objects like {\"name\": \"SSD\", \"points\": [\"fast\", \"no moving parts\"]}, 2 to 4 short points each. One column per thing being compared: a scene about A versus B has EXACTLY 2 columns, named A and B. Never add a column named after the scene heading (such as \"A vs B\") or a column of general criteria",
   "caption": "short caption shown under the columns (optional)"
  },
  "setup": {

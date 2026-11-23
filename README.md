@@ -7,7 +7,7 @@ Turn one topic into a finished explainer video, on your own computer, using free
 ![Pipeline overview](Explainer-video-pipeline.png)
 
 ```
-python .\main.py -t "How computers work from electricity to storage. Exactly 5 scenes." -p Video_Landscape_1080p_16x9 -l en
+python .\main.py -T topic.json
 ```
 
 ## What it does
@@ -63,7 +63,7 @@ irm https://ollama.com/install.ps1 | iex
 A virtual environment is a private copy of Python for this project, so nothing you install can break your other programs.
 
 ```powershell
-git clone https://github.com/mjm94219/explainer_pipeline.git
+git clone https://github.com/mjm94219/explainer_video_pipeline
 cd explainer_pipeline
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -188,21 +188,9 @@ This reads your setup and tells you what is missing: the Python packages, the GP
 
 Start ComfyUI first (step 13) and make sure Ollama is running. Then, from the project folder:
 
-**Make a new video from scratch**
+**Make a new video**
 
-```powershell
-python .\main.py -t "How computers work from electricity to storage. Exactly 5 scenes.
-Scene 1: electricity from the wall outlet to laptop computer which goes through the power supply to the CPU (use power_flow).
-Image: a white electrical wall outlet with a power cord plugged in, the cord running to a laptop on a wooden desk, soft light, shallow depth of field
-Scene 2: the CPU turns electricity into 1s and 0s (use bit_stream).
-Scene 3: how an SSD stores bits as electrons (use flash_cells).
-Scene 4: how a hard drive stores bits as magnets (use magnetic_platter).
-Scene 5: SSD versus hard drive (use flow_cards)." -p Video_Landscape_1080p_16x9 -l en
-```
-
-**Make a new video from a topic file (easier to edit)**
-
-Put the topic, the scenes and the settings in `topic.json` and point the pipeline at it. Edit the file for each new video:
+Put the topic, the scenes and the settings in `topic.json` and point the pipeline at it. Edit the file for each new video. The topic, the scenes and the settings **always come from this JSON file**: there is no other way to give a topic. Use another file with `-T my_topic.json`. If you give no file name, or the file does not exist, the run stops with an error message.
 
 ```powershell
 python .\main.py -T topic.json
@@ -228,18 +216,37 @@ python .\main.py -T topic.json
 
 - Only `topic` is required. Without `scenes`, the planner picks 4 to 6 scenes. With `scenes`, you get exactly that many.
 - Each scene needs a `description`. `animation` (optional) must be the name of an animation file (`animation_<name>.json`): `flow`, `compare`, `steps`, `stat`, `bits`, `cells`, `ring`, `stack`, `meter`, `cycle`, `timeline`, `prosCons`, `bigtext`, `grid`. An unknown name prints a warning and the planner chooses. `"animation": "none"` means no animation for that scene (only the background and subtitles). `image` (optional) is the background picture prompt for that scene. `words` (optional) is the narration length for that scene in words, for example `"words": 100` (about 38 seconds; the voice speaks roughly 2.6 words per second). `blur` (optional) softens that scene's background: a number such as `20` (higher is blurrier) or `true` for 20.
-- `template` is a name from `video_template.json`. `languages`, `fps`, `music` and `output` are optional too.
-- Anything you type on the command line wins over the file, for example `-p Video_Portrait_1080p_9x16`, `-f 24` or `-o my_video.mp4`. Use either `-t` or `-T`, not both.
+- `template` is a name from `video_template.json` (the video format). `languages`, `fps` and `music` (a sound file for background music, e.g. `"music": "C:/sounds/calm.mp3"`) are optional too. The finished video is always saved as `Exports\master_explainer.mp4` in the project folder.
+- Everything comes from this file: the command line takes only `-T <file>` (make a video) or `-R <project folder>` (rebuild one).
 
-**How the topic text works**
+**What the scene fields do**
 
-- **Scene count:** if the topic says "Exactly 5 scenes.", the planner follows that count. Otherwise it picks 4 to 6 scenes.
-- **Scene details:** you can describe each scene on its own line ("Scene 1: ..."). The planner uses these lines to write the narration and on-screen text.
-- **Backgrounds:** an `Image:` line gives that scene its own background picture. It applies to the most recent "Scene N" before it, so it can sit on the same line (`Scene 2 Image: a laptop on a desk`) or on the line below, as in the example above.
-- **Narration length:** the planner writes `NARRATION_WORDS` words per scene (default 50 to 70, about 20 to 27 seconds). A `Words: 100` line (same placement rules as `Image:`) sets a longer or shorter scene. If the model misses the target by a lot, the planning output prints a warning, and you can edit `Scripts\narration_NN.txt` to adjust.
-- **Blurred backgrounds:** a `Blur: 20` line (same placement rules as `Image:`) blurs that scene's background picture. Try 10 for a soft look and 30 for a heavy one.
-- **Which animations the planner is told about:** if every scene in `topic.json` names an animation, the planner is only told about those (a shorter prompt, and nothing else can be picked). If any scene leaves `animation` out, the planner sees the full list so it can choose for that scene.
-- **Animations:** you can suggest an animation for a scene with "(use ...)". The planner picks from the animations in the `animation_*.json` files: `flow`, `compare`, `steps`, `stat`, `bits`, `cells`, `ring`, `stack`, `meter`, `cycle`, `timeline`, `prosCons`, `bigtext` and `grid`. A name that is not in that list (for example `power_flow` in the example above) is replaced with `flow`, so use the names above when you want a specific one.
+- **Scene count:** with `scenes`, you get exactly that many scenes. Without it, the planner picks 4 to 6 (you can write "Exactly 5 scenes." in `topic`).
+- **`description`:** what the scene is about. The planner uses it to write the narration and on-screen text.
+- **`image`:** the background picture prompt for that scene.
+- **`words`:** narration length for that scene in words, for example `100` (about 38 seconds; the voice speaks roughly 2.6 words per second). It **overrides `NARRATION_WORDS` in `settings.json` for that scene only**; the other scenes keep the default (50 to 70 words, about 20 to 27 seconds). The model is asked for about N words (N-10 to N+10). Models do not always obey, so if a scene with its own `words` comes out far from the target (more than 20%, or 15 words), the pipeline asks the model up to two more times to rewrite just that scene's narration to the right length, and keeps the closest version; the progress lines say `asking the model to rewrite it`. The pipeline never cuts or pads the text itself, and scenes without `words` are not rewritten. After planning, each scene's word count is printed, with a warning if it is still far from the target. To fix a scene by hand, edit `Scripts\narration_NN.txt` and run again with `-R`.
+- **`blur`:** a number such as `20` (about 10 is soft, 30 is heavy) or `true` for 20, to soften that scene's background picture.
+- **`animation`:** the name of an animation file (`animation_<name>.json`), see below. An unknown name prints a warning and the planner chooses. `"animation": "none"` means no animation for that scene.
+- **Which animations the planner is told about:** if every scene names an animation, the planner is only told about those (a shorter prompt, and nothing else can be picked). If any scene leaves `animation` out, the planner sees the full list so it can choose for that scene.
+- **Available animations** (each is a file `animation_<name>.json`):
+  - **General-purpose, for any topic:** `flow`, `compare`, `steps`, `stat`, `stack`, `meter`, `cycle`, `timeline`, `prosCons`, `bigtext` and `grid`.
+  - **Specific to the example topic ("How computers work from electricity to storage"):** `bits` (a voltage wave turning into 1s and 0s), `cells` (SSD memory cells holding electrons) and `ring` (a hard-drive platter with magnets). They are drawings of that subject, so use them only for computer and storage topics. They were built as examples of what a custom animation can look like.
+  - `none` shows no animation.
+  - The example `topic.json` in this folder uses `bits`, `cells` and `ring` because its topic is computers and storage. For a different topic, pick from the general-purpose group, or add your own `animation_<name>.json` file.
+
+**Background music (optional)**
+
+Add a `"music"` line to `topic.json` with the path of a sound file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a` or `.ogg`):
+
+```json
+"music": "C:/sounds/calm.mp3"
+```
+
+- **No `"music"` line means no music.** Nothing else changes, and nothing is added to `Audio\Music\`.
+- When the project is created, the file is copied into the project's `Audio\Music\` folder. It plays under the narration, fades in at the start and out at the end, and gets quieter while the voice speaks. The level is `MUSIC_VOLUME` in `settings.json`.
+- In JSON write the path with forward slashes (`C:/sounds/calm.mp3`) or doubled backslashes (`C:\\sounds\\calm.mp3`).
+- If the file is not found, the video is built without music and the run does not stop, so check the finished video.
+- To add music to a project that already exists, put the file in its `Audio\Music\` folder, set `"music"` to that file's full path in the project's `project.json` (inside `"config"`), and run again with `-R`.
 
 **Blurred backgrounds**
 
@@ -281,14 +288,29 @@ If the voice says a word wrongly, add it to `pronunciation-en.json`. The left si
 
 - The file is read on every run, so you only edit the JSON. Keys that start with `_` are ignored (the `_help` line).
 - When the list changes, only the scenes whose spoken text changes are redone (voice, subtitles and animation). Each voiceover keeps a `narration_NN.spoken.txt` next to it to remember what it was made with.
-- The narration text itself, and the subtitles that follow what is heard, are not rewritten. If a respelling shows up in the captions, change its right-hand spelling.
+- The narration text itself is not rewritten.
+- An entry whose right side is the same word as the narration does nothing: the left side is matched in the narration. To change how the voice says a word, write the word on the left and the spelling you want it to read on the right.
 - The first run after adding this file redoes any voiceover whose words appear in the list.
+
+**Subtitle fixes**
+
+The subtitles are what the speech-to-text model hears, not the narration text, so a respelled word can show up wrongly in them (the voice says "say-ta" and the subtitle shows "say-ta" or "Sata"). Fix it in `caption-en.json`: left = the wrong word or words shown in the subtitles (one word, or several in a row such as `"Comfy UI"`, any capitals), right = the word you want.
+
+```json
+{
+  "say-ta": "SATA",
+  "nand": "NAND"
+}
+```
+
+- A fix can cover several words in a row. A respelling the voice speaks as separate letters, such as `"SSD": "S S D"`, may be heard as `S S D`; add `"S S D": "SSD"` to show it as one word.
+- Subtitles are rebuilt whenever a voiceover is redone. To rebuild only the subtitles, delete that scene's `Subtitles\captions_NN.ass` and run again with `-R`.
 
 **Planner model**
 
 The planner uses `qwen3:14b` (`LLM_MODEL` in `settings.json`). `"OLLAMA_THINK": false` skips the model's hidden "thinking" step, which is faster and keeps the answer to clean JSON. To go back to `qwen2.5:14b`, set `"LLM_MODEL": "qwen2.5:14b"` and `"OLLAMA_THINK": null` in `settings.json`. To compare the two, run the same `topic.json` once with each and check the scenes, the animation choices and the parameters.
 
-Tip: ask the free tier of Claude, ChatGPT or Gemini to write a detailed topic for you, with the scene count, one line per scene and an `Image:` line for each background. Paste the result into `-t` and Ollama will plan the scenes from it.
+Tip: ask the free tier of Claude, ChatGPT or Gemini to write the `topic.json` for you, with the scene count and a description, an animation and an image for each scene. Save it and run `python .\main.py -T topic.json`.
 
 **Resume or rebuild an existing project**
 
@@ -296,7 +318,7 @@ Tip: ask the free tier of Claude, ChatGPT or Gemini to write a detailed topic fo
 python .\main.py -R projects\<project folder name>
 ```
 
-**Choose a video format with `-p`**
+**Choose a video format**
 
 | Profile | Shape | Size | FPS |
 |---|---|---|---|
@@ -306,7 +328,7 @@ python .\main.py -R projects\<project folder name>
 | `Video_Portrait_1080p_9x16` | 9:16 portrait (Shorts, Reels) | 1080p | 30 |
 | `Video_Square_1080p_1x1` | square | 1080p | 30 |
 
-Each video format is a template in `video_template.json` with its `width`, `height` and `fps` (for example 1920 x 1080 at 30 fps). Add your own there, or run `python .\main.py --manage-profiles` to view, edit or clone templates. Pick one with `-p <template name>`.
+Each video format is a template in `video_template.json` with its `width`, `height` and `fps` (for example 1920 x 1080 at 30 fps). Add your own by adding an entry to that file. Pick one by setting `"template"` in `topic.json`, for example `"template": "Video_Portrait_1080p_9x16"`; `fps`, `languages` and `music` in `topic.json` override the template's own values.
 
 ## Where everything is saved
 
@@ -329,20 +351,20 @@ Each video format is a template in `video_template.json` with its `width`, `heig
 ## Fine-tune and re-run
 
 1. Edit `<Project Root>\Scripts\narration_sNN.txt` to change what the voice says.
-2. Edit `<Project Root>\Scripts\onscreen_sNN.json` to change the animation, heading and on-screen text.
+2. Edit `<Project Root>\Scripts\onscreen_sNN.json` to change the animation, heading and on-screen text (see [Titles and captions](#titles-and-captions) to hide them).
 3. Re-run with `python .\main.py -R projects\<project folder name>`.
 
-Only the scenes you changed are rebuilt. To change the subtitle size, edit `SUBTITLE_FONT_SCALE` in `settings.json` and delete the files in `Subtitles\`.
+Only the scenes you changed are rebuilt. A new `-T topic.json` run plans everything again and does not keep these edits, so make them in the project folder and use `-R`. For example, in a `compare` scene you can fix the box names and points under `animation_params` > `columns`; the planner already trims a `compare` scene titled "A vs B" to exactly two columns. To change the subtitle size, edit `SUBTITLE_FONT_SCALE` in `settings.json` and delete the files in `Subtitles\`.
 
 ## The code
 
 | File | What it does |
 |---|---|
 | `main.py` | The conductor. Runs every step in order, skips anything already finished, rebuilds only what changed |
-| `cli.py` | Reads your command: topic, profile, resume flag; manages `video_template.json` |
+| `cli.py` | Reads your command (`-T topic.json` or `-R <project folder>`), reads `topic.json` and `video_template.json` |
 | `llm_planner.py` | Asks Ollama to plan the scenes and pick an animation for each one |
 | `tts_engine.py` | Makes the voice with Kokoro, falls back to Edge-TTS |
-| `subtitle_engine.py` | Times the subtitles from the voice with faster-whisper |
+| `subtitle_engine.py` | Times the subtitles from the voice with faster-whisper and applies `caption-en.json` |
 | `diffusion_engine.py` | Sends the background prompt to ComfyUI; makes a plain dark background if ComfyUI is not ready |
 | `animation_library.py` | Reads the `animation_*.json` files and matches each scene to one of its animations |
 | `animation_<name>.json` | One file per animation (`animation_flow.json`, `animation_bits.json`, ...): name, description, params and how it is drawn. Add, delete or edit a file to add, remove or change an animation |
@@ -351,13 +373,55 @@ Only the scenes you changed are rebuilt. To change the subtitle size, edit `SUBT
 | `html_engine.py` | Opens animator.html in a browser with Playwright and saves a transparent video |
 | `infographic_engine.py` | Runs the animation step for each scene |
 | `assembly_ffmpeg.py` | Builds one clip per scene (applies the background blur), joins them and exports the final video |
+| `srt_export.py` | Writes the `.srt` subtitle file for YouTube next to the final video |
 | `pronunciation-en.json` | How the voice should say certain words (left = as written, right = spelling the voice reads correctly) |
+| `caption-en.json` | Fixes for words the subtitles show wrongly (left = wrong word, right = the word you want) |
 | `settings.json` | **All the settings you may want to change**: Ollama model, narration length, ComfyUI address, image model, voice and speed, subtitle size, bitrates, project folder |
 | `config.py` | Reads `settings.json` and checks it (a missing or mistyped setting stops the run with a message naming it). You do not edit this file |
 | `video_template.json` | Video formats (templates): width, height, frame rate, language, music |
 | `preflight_check.py` | Checks your setup before a long render |
 
 To add a new look, add a file `animation_<name>.json` (copy one and change it); no code changes are needed. To remove one, delete its file. See `animation_README.md`.
+
+## Titles and captions
+
+Each scene can show a **top title** (the `heading`) and a **bottom caption** (the `caption` inside `animation_params`, only when the planner filled it in). Both come from the planner and are saved in `Scripts\onscreen_sNN.json`.
+
+To show fewer on-screen texts, use the two switches in `settings.json`:
+
+```json
+"SHOW_HEADINGS": true,
+"SHOW_CAPTIONS": false
+```
+
+- `false` hides that kind of text in **every** scene. The text stays in the files, so you can turn it back on later.
+- One scene can override the switch with `"show_heading"` or `"show_caption"` (`true` or `false`) at the top level of its `onscreen_sNN.json`, next to `"animation"`:
+
+```json
+{
+  "animation": "stat",
+  "heading": "SSD vs HDD",
+  "show_heading": true,
+  "show_caption": false,
+  "animation_params": { "...": "..." }
+}
+```
+
+  Remove the line to go back to the `settings.json` switch.
+- The small labels inside an animation (`one_label`, `head_label` and so on) are part of the picture and are not affected.
+- After you change a switch, run again with `-R`. Every animation made with different title settings is rebuilt automatically (the voice and subtitles are kept). The settings used are remembered in `Graphics\infographic_NN.text.txt`.
+
+## Turn the subtitles off, and the .srt file for YouTube
+
+The subtitles are burned into the picture. To leave them out, set this in `settings.json`:
+
+```json
+"SHOW_SUBTITLES": false
+```
+
+Run again with `-R`; the final video is put together again without them (the voice, subtitles and animations are not redone). The subtitle files in `Subtitles\` are still made, and a clip you join in from `DemoClips` keeps any subtitles it already has.
+
+Every run also writes `Exports\master_explainer.srt` next to the video: the same words grouped into short lines, with times that match the final video. In YouTube Studio open the video, choose **Subtitles**, **Add language**, **Upload file**, **With timing** and pick the `.srt`. Viewers can then switch the captions on or off in the player. Use this together with `"SHOW_SUBTITLES": false`.
 
 ## Settings you may want to change (`settings.json`)
 
@@ -369,6 +433,7 @@ Edit the values in `settings.json` and keep the names. Keys that start with `_` 
 | `NARRATION_WORDS` | Words of narration per scene (default `"50 to 70"`, about 2.6 words per second). A scene can override it with `"words"` in `topic.json` |
 | `OLLAMA_NUM_CTX`, `OLLAMA_NUM_PREDICT` | Planner context size and most tokens it may write (defaults `16384`, `8192`) |
 | `DEFAULT_WIDTH`, `DEFAULT_HEIGHT`, `DEFAULT_FPS` | Video size and frame rate used when a template does not say (`1920`, `1080`, `30`) |
+| `SHOW_HEADINGS`, `SHOW_CAPTIONS` | `true` shows the top title and the bottom caption of each scene (default); `false` hides it in every scene. See [Titles and captions](#titles-and-captions) |
 | `DEFAULT_ANIMATION`, `DEFAULT_BLUR` | Animation used when a name is unknown (`flow`); blur used for `"blur": true` (`20`) |
 | `WORDS_PER_SECOND`, `SCENE_WORDS_MIN`, `SCENE_WORDS_MAX` | Speaking rate used for narration length (`2.6`) and the allowed range for a scene's `words` (`10` to `400`) |
 | `TAIL_PAD_SEC`, `VIDEO_BITRATE`, `AUDIO_BITRATE` | Pause after each scene's last word (`0.3`) and the bitrates of the scene clips (`16M`, `256k`) |
@@ -377,6 +442,7 @@ Edit the values in `settings.json` and keep the names. Keys that start with `_` 
 | `IMAGE_MODEL` | `sdxl_base` (best quality) or `lightning` (fast, less detail) |
 | `EN_TTS_VOICE`, `EN_TTS_SPEED` | Kokoro voice and speed (default `am_adam`, `1.0`) |
 | `WHISPER_MODEL_SIZE` | faster-whisper model size (default `base`) |
+| `SHOW_SUBTITLES` | `true` burns the subtitles into the video; `false` leaves them out (the `.srt` file is still written). See [Turn the subtitles off](#turn-the-subtitles-off-and-the-srt-file-for-youtube) |
 | `SUBTITLE_FONT_SCALE` | Subtitle size as a fraction of video height (default `0.055`) |
 | `OLLAMA_URL`, `COMFY_URL` | Where Ollama and ComfyUI run (defaults `http://127.0.0.1:11434` and `http://127.0.0.1:8188`) |
 | `SUPPORTED_AUDIO_EXTENSIONS` | Soundtrack formats accepted for background music (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.ogg`) |

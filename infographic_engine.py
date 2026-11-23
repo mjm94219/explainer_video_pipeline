@@ -12,14 +12,17 @@ import html_engine
 def render_animation(scene_id: int, graphics_dir: Path, width: int, height: int, fps: int,
                      duration: float, safe_w: float, sub_margin: float,
                      heading: str = "", key_points: list = None,
-                     animation: str = "", anim_params: dict = None) -> Path:
+                     animation: str = "", anim_params: dict = None,
+                     show_heading: bool = True, show_caption: bool = True) -> Path:
     catalog = animation_library.load_catalog(quiet=True)
     entry, params = animation_library.resolve(animation, anim_params, catalog)
     if not entry:
         raise RuntimeError(f"No animation blocks found in {animation_library._active_blocks_file}")
     params = dict(params)
-    if heading:
+    if heading and show_heading:
         params["heading"] = heading
+    if not show_caption:
+        params.pop("caption", None)
     if key_points and not params.get("labels") and entry["name"] == "flow":
         params["labels"] = list(key_points)
     dur = duration if duration > 0 else 12.0

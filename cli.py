@@ -520,7 +520,7 @@ def load_topic_file(path_str: str) -> Dict[str, Any]:
                 raise SystemExit(f"Error: scene {i} \"blur\" must be a number such as 20 (or true)")
             lines.append(f"Blur: {sigma:g}")
 
-    settings = {k: data[k] for k in ("template", "languages", "fps", "music", "output") if data.get(k) is not None}
+    settings = {k: data[k] for k in ("template", "languages", "fps", "music") if data.get(k) is not None}
     settings["topic"] = "\n".join(lines)
     print(f"[CLI] Loaded topic file: {path.name} ({len(scenes)} scene{'s' if len(scenes) != 1 else ''})")
     return settings
@@ -531,42 +531,22 @@ def get_project_config() -> Dict[str, Any]:
 
     parser = argparse.ArgumentParser(description="Autonomous Explainer Video Studio")
     parser.add_argument("-R", "--resume", type=str, metavar="PROJECT_DIR_OR_NAME", help="Resume an existing project from its folder name or path")
-    parser.add_argument("-t", "--topic", type=str, help="Video topic or concept")
-    parser.add_argument("-T", "--topic-file", type=str, metavar="TOPIC_JSON", help="Read the topic, scenes and settings from a JSON file (see topic.json)")
-    parser.add_argument("-p", "--profile", type=str, choices=list(profiles.keys()), help="Video template from video_template.json (sets the size and frame rate)")
-    parser.add_argument("-f", "--fps", type=int, choices=[24, 30, 60], help="Frame rate override")
-    parser.add_argument("-l", "--languages", type=str, help="Comma-separated language codes, e.g. 'en'")
-    parser.add_argument("-m", "--music", type=str, help="Background music audio file override")
-    parser.add_argument("-o", "--output", type=str, default=None, help="Output MP4 file (default master_explainer.mp4)")
-    parser.add_argument("--manage-profiles", action="store_true", help="Open the preset profile manager directly")
-    parser.add_argument(
-        "--save-profile",
-        nargs="?",
-        const="__PROMPT__",
-        default=None,
-        metavar="PROFILE_NAME",
-        help="Save current parameters into video_template.json under this preset name"
-    )
+    parser.add_argument("-T", "--topic-file", type=str, nargs="?", const="", metavar="TOPIC_JSON",
+                        help="REQUIRED to make a video: the JSON file with the topic, scenes and settings, e.g. -T topic.json")
     args = parser.parse_args()
-
-    if args.manage_profiles:
-        manage_profiles_menu(profiles)
-        profiles = load_profiles()
 
     if args.resume:
         proj_json = resolve_resume_path(args.resume)
         return {"resume_project_json": str(proj_json)}
 
-    if args.topic and args.topic_file:
-        parser.error("use either -t or -T, not both")
-    file_cfg = load_topic_file(args.topic_file) if args.topic_file else {}
-
-    if not args.topic and not args.profile and not args.topic_file:
-        auto_save = None if args.save_profile == "__PROMPT__" else args.save_profile
-        return prompt_interactive_config(profiles, auto_save_name=auto_save)
+    if not args.topic_file:
+        raise SystemExit("Error: no topic file given. The topic, scenes and settings come from a JSON file:\n"
+                         "    python .\\main.py -T topic.json\n"
+                         "To rebuild an existing project instead:  python .\\main.py -R projects\\<project folder>")
+    file_cfg = load_topic_file(args.topic_file)
 
     base = {}
-    template_name = args.profile or file_cfg.get("template")
+    template_name = file_cfg.get("template")
     if template_name and template_name not in profiles:
         raise SystemExit(f"Error: template '{template_name}' is not in video_template.json (available: {', '.join(profiles)})")
     if template_name:
@@ -575,36 +555,19 @@ def get_project_config() -> Dict[str, Any]:
 
     width = base.get("width", DEFAULT_SIZE[0])
     height = base.get("height", DEFAULT_SIZE[1])
-    fps = args.fps or file_cfg.get("fps") or base.get("fps", DEFAULT_FPS)
+    fps = file_cfg.get("fps") or base.get("fps", DEFAULT_FPS)
 
-    if args.languages:
-        languages = [l.strip().lower() for l in args.languages.split(",") if l.strip()]
-    else:
-        languages = file_cfg.get("languages") or base.get("languages", ["en"])
+    languages = file_cfg.get("languages") or base.get("languages", ["en"])
 
-    music = args.music if args.music is not None else file_cfg.get("music", base.get("music", None))
+    music = file_cfg.get("music", base.get("music", None))
 
-    if args.save_profile:
-        save_name = args.save_profile
-        if save_name == "__PROMPT__":
-            save_name = input("\nEnter name for this new preset: ").strip()
-        if save_name:
-            desc = input(f"Description for template '{save_name}': ").strip() or f"Template {width}x{height}"
-            save_payload = {
-                "description": desc, "width": width, "height": height,
-                "fps": fps, "languages": languages, "music": music
-            }
-            save_profile(save_name, save_payload)
-
-    topic = args.topic or file_cfg.get("topic")
+    topic = str(file_cfg.get("topic") or "").strip()
     if not topic:
-        topic = input("\nEnter Video Topic/Idea: ").strip()
-        while not topic:
-            topic = input("Topic cannot be empty: ").strip()
+        raise SystemExit(f"Error: {args.topic_file} has no \"topic\" text. Add {{\"topic\": \"...\"}} to the file.")
 
     return {
         "topic": topic, "aspect_ratio": aspect_of(width, height),
         "width": width, "height": height, "fps": fps, "languages": languages,
-        "music": music, "output": args.output or file_cfg.get("output") or "master_explainer.mp4",
+        "music": music, "output": "master_explainer.mp4",
         "resume_project_json": None
     }

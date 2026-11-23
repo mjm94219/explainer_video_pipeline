@@ -18,6 +18,7 @@ EXPLAINER_ANIMATOR_HTML: Path = HERE / "animator.html"      # the generic page t
 EXPLAINER_ANIMATION_DIR: Path = HERE                        # folder holding the animation files
 ANIMATION_FILE_PATTERN: str = "animation_*.json"            # one file per animation: animation_flow.json, animation_bits.json ...
 PRONUNCIATION_FILE: Path = HERE / "pronunciation-en.json"
+CAPTION_FILE: Path = HERE / "caption-en.json"              # subtitle word fixes
 
 # name -> allowed type. "bool|null" accepts true, false or null; "float" also accepts whole numbers; "list" is a list of text.
 _SCHEMA = {
@@ -26,8 +27,8 @@ _SCHEMA = {
     "OLLAMA_URL": "str", "COMFY_URL": "str", "COMFY_SUBMIT_TIMEOUT": "int", "COMFY_POLL_TIMEOUT": "int", "COMFY_RENDER_DEADLINE": "int",
     "EN_TTS_VOICE": "str", "EN_TTS_SPEED": "float", "WHISPER_MODEL_SIZE": "str",
     "IMAGE_MODEL": "str", "DEFAULT_BLUR": "float", "BACKGROUND_ZOOM_MAX": "float",
-    "DEFAULT_WIDTH": "int", "DEFAULT_HEIGHT": "int", "DEFAULT_FPS": "int", "DEFAULT_ANIMATION": "str",
-    "SUBTITLE_FONT_SCALE": "float", "TAIL_PAD_SEC": "float", "VIDEO_BITRATE": "str", "AUDIO_BITRATE": "str", "MUSIC_VOLUME": "float",
+    "DEFAULT_WIDTH": "int", "DEFAULT_HEIGHT": "int", "DEFAULT_FPS": "int", "DEFAULT_ANIMATION": "str", "SHOW_HEADINGS": "bool", "SHOW_CAPTIONS": "bool",
+    "SHOW_SUBTITLES": "bool", "SUBTITLE_FONT_SCALE": "float", "TAIL_PAD_SEC": "float", "VIDEO_BITRATE": "str", "AUDIO_BITRATE": "str", "MUSIC_VOLUME": "float",
     "PROJECTS_FOLDER": "str", "SUPPORTED_AUDIO_EXTENSIONS": "list",
 }
 
@@ -61,10 +62,11 @@ def _check(name: str, value, kind: str):
         "int": isinstance(value, int) and not isinstance(value, bool),
         "float": isinstance(value, (int, float)) and not isinstance(value, bool),
         "bool|null": value is None or isinstance(value, bool),
+        "bool": isinstance(value, bool),
         "list": isinstance(value, list) and all(isinstance(x, str) for x in value),
     }[kind]
     if not ok:
-        shown = {"str": "text in quotes", "int": "a whole number", "float": "a number", "bool|null": "true, false or null", "list": "a list of text"}[kind]
+        shown = {"str": "text in quotes", "int": "a whole number", "float": "a number", "bool|null": "true, false or null", "bool": "true or false", "list": "a list of text"}[kind]
         _fail(f"setting {name} must be {shown} (found {value!r}).")
 
 
@@ -105,6 +107,9 @@ DEFAULT_WIDTH: int = _values["DEFAULT_WIDTH"]
 DEFAULT_HEIGHT: int = _values["DEFAULT_HEIGHT"]
 DEFAULT_FPS: int = _values["DEFAULT_FPS"]
 DEFAULT_ANIMATION: str = _values["DEFAULT_ANIMATION"]
+SHOW_HEADINGS: bool = _values["SHOW_HEADINGS"]          # false: no top title in any scene (unless the scene says "show_heading": true)
+SHOW_CAPTIONS: bool = _values["SHOW_CAPTIONS"]          # false: no bottom caption in any scene (unless the scene says "show_caption": true)
+SHOW_SUBTITLES: bool = _values["SHOW_SUBTITLES"]          # false: no burned-in subtitles (the .srt file is still written)
 SUBTITLE_FONT_SCALE: float = float(_values["SUBTITLE_FONT_SCALE"])
 TAIL_PAD_SEC: float = float(_values["TAIL_PAD_SEC"])
 VIDEO_BITRATE: str = _values["VIDEO_BITRATE"]
@@ -124,7 +129,23 @@ def load_pronunciations() -> Dict[str, str]:
         data = json.loads(PRONUNCIATION_FILE.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError("expected a JSON object like {\"RAM\": \"ram\"}")
-        return {str(k): str(v) for k, v in data.items() if not str(k).startswith("_") and str(k).strip()}
+        return {str(k): str(v) for k, v in data.items()
+                if not str(k).startswith("_") and str(k).strip() and isinstance(v, str)}
     except Exception as e:
         print(f" -> [warning] could not read {PRONUNCIATION_FILE.name}: {e}")
+        return {}
+
+
+def load_caption_fixes() -> Dict[str, str]:
+    """Reads caption-en.json -> {word the subtitles show wrongly (lowercase): correct word}."""
+    try:
+        if not CAPTION_FILE.is_file():
+            return {}
+        data = json.loads(CAPTION_FILE.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("expected a JSON object like {\"nand\": \"NAND\"}")
+        return {str(k).strip().lower(): str(v) for k, v in data.items()
+                if not str(k).startswith("_") and str(k).strip() and isinstance(v, str)}
+    except Exception as e:
+        print(f" -> [warning] could not read {CAPTION_FILE.name}: {e}")
         return {}

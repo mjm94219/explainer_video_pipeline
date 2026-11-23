@@ -71,6 +71,50 @@ def _topic_words(topic):
     return found
 
 
+def _ask_for_length(narration: str, description: str, target: int) -> str:
+    """Asks the model once to rewrite one scene's narration to about `target` words. Returns "" if that fails."""
+    prompt = (f"Rewrite this narration so it is about {target} words long (between {target - 10} and {target + 10}). "
+              f"Keep the same meaning and facts; {'add clear explanatory detail' if len(narration.split()) < target else 'tighten it'}. "
+              "Plain English, spoken style, never mention scenes, animations or file names. "
+              f"Topic of the scene: {description}\n\nNarration:\n{narration}\n\n"
+              "Reply as JSON only: {\"narration\": \"...\"}")
+    payload = {"model": LLM_MODEL, "prompt": prompt, "format": "json", "stream": False,
+               "options": {"num_ctx": OLLAMA_NUM_CTX, "num_predict": OLLAMA_NUM_PREDICT}, "keep_alive": 0}
+    if OLLAMA_THINK is not None:
+        payload["think"] = OLLAMA_THINK
+    try:
+        resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=600)
+        resp.raise_for_status()
+        return str(json.loads(resp.json()["response"]).get("narration", "")).strip()
+    except Exception as e:
+        print(f"    [warning] could not ask the model to adjust the length: {e}")
+        return ""
+
+
+def _topic_scene_text(topic, scene_no: int) -> str:
+    """The 'Scene N: ...' text of a scene in the topic (used as the subject when rewriting its narration)."""
+    for line in str(topic).splitlines():
+        m = re.match(r"\s*scene\s*" + str(scene_no) + r"\s*:\s*(.*)", line, re.I)
+        if m:
+            return re.sub(r"\(use [^)]*\)", "", m.group(1)).strip()
+    return ""
+
+
+def _fit_narration(sc: dict, target: int, topic) -> None:
+    """A scene with its own "words" target that came out far from it gets up to 2 rewrite requests; the closest text is kept."""
+    n = lambda t: len(str(t).split())
+    tol = max(15, int(0.2 * target))
+    scene_no = sc.get("scene_id")
+    for attempt in (1, 2):
+        have = n(sc.get("narration", ""))
+        if abs(have - target) <= tol:
+            return
+        print(f"    Scene {scene_no}: {have} words, asked for about {target}; asking the model to rewrite it (try {attempt})...")
+        new = _ask_for_length(sc.get("narration", ""), _topic_scene_text(topic, int(scene_no or 0)), target)
+        if new and abs(n(new) - target) < abs(have - target):
+            sc["narration"] = new
+
+
 def _topic_animations(topic):
     """Pull the '(use name)' of each 'Scene N: ...' line out of the topic text -> {scene_number: animation name}."""
     found = {}
@@ -102,6 +146,25 @@ def _fill_params(scene, entry):
     except Exception as e:
         print(f"    [warning] could not fill the parameters of '{entry['name']}' ({type(e).__name__}); using its defaults")
         return {}
+
+
+def _tidy_compare(sc):
+    """A 'compare' scene must have one column per thing compared. The model sometimes adds a column named after the heading
+    ("SSD vs HDD") or one of general criteria; drop those so a scene about A versus B shows exactly the 2 boxes A and B."""
+    params = sc.get("animation_params")
+    cols = params.get("columns") if isinstance(params, dict) else None
+    if not isinstance(cols, list):
+        return
+    def norm(x):
+        return re.sub(r"[^a-z0-9]+", " ", str(x).lower()).strip()
+    heading = norm(sc.get("heading", ""))
+    keep = [c for c in cols if not (isinstance(c, dict) and (norm(c.get("name", "")) == heading
+                                                              or re.search(r"\b(vs|versus)\b", norm(c.get("name", "")))))]
+    if re.search(r"\b(vs|versus)\b", heading) and len(keep) > 2:
+        keep = keep[:2]                                   # "A vs B" -> exactly two boxes
+    if len(keep) >= 2 and len(keep) != len(cols):
+        print(f"    Scene {sc.get('scene_id')}: compare had {len(cols)} columns, keeping {len(keep)} ({', '.join(str(c.get('name')) for c in keep if isinstance(c, dict))})")
+        params["columns"] = keep
 
 
 def _language_problems(manifest):
@@ -169,12 +232,17 @@ def generate_script_manifest(config: Dict[str, Any]) -> Dict[str, Any]:
     words_rule = f"{str(NARRATION_WORDS).strip()} words"
     nums = [int(x) for x in re.findall(r"\d+", str(NARRATION_WORDS))] or [50, 70]
     secs_rule = f"about {round(min(nums) / WORDS_PER_SECOND)} to {round(max(nums) / WORDS_PER_SECOND)} seconds"
+    own = _topic_words(config["topic"])
+    length_notes = ""
+    if own:
+        length_notes = ("SCENE LENGTHS THAT REPLACE THE DEFAULT (these scenes MUST be this long, count the words): "
+                        + "; ".join(f"scene {k}: {v} words (between {v - 10} and {v + 10})" for k, v in sorted(own.items())) + ".\n")
 
     system_prompt = f"""You are an elite technical explainer video director and animation engineer.
 Deconstruct the topic into structured scenes. If the user requests a specific number of scenes, produce EXACTLY that many. Otherwise use 4 to 6 scenes.
 Target Canvas: {config['width']}x{config['height']} ({config['aspect_ratio']}, {orientation}).
 Allowed Languages: {allowed_langs}.
-{lang_rules}
+{lang_rules}{length_notes}
 For each scene provide:
 1. scene_id (int, starting at 1)
 2. lang (one of: {allowed_langs})
@@ -242,6 +310,12 @@ OUTPUT STRICT JSON ONLY:
             sc["background_blur"] = blurs[num]
             print(f"    Scene {num}: background blur {blurs[num]:g}")
     for sc in scenes:
+        try:
+            own_target = wanted_words.get(int(sc.get("scene_id") or 0))
+        except (TypeError, ValueError):
+            own_target = None
+        if own_target:
+            _fit_narration(sc, own_target, config["topic"])
         words = len(str(sc.get("narration", "")).split())
         extra = ""
         if catalog:
@@ -263,6 +337,8 @@ OUTPUT STRICT JSON ONLY:
                 sc["animation_params"] = {}
             if sc.get("key_points") and "labels" in catalog[name]["params"] and not sc["animation_params"].get("labels"):
                 sc["animation_params"]["labels"] = sc["key_points"]
+            if name == "compare":
+                _tidy_compare(sc)
             extra = f", animation: {name}"
         target = wanted_words.get(int(sc.get("scene_id") or 0))
         note = ""

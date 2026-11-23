@@ -1,5 +1,5 @@
 {
-  "_help": "How the voice should say certain words. Left = the word as written in the narration (whole word, any capitals). Right = the spelling the voice reads correctly. Keys starting with _ are ignored. Change a right-hand spelling and run again: the affected scenes are redone automatically.",
+  "_help": "How the voice should say certain words. Left = the word as written in the narration (whole word, any capitals). Right = the spelling the voice reads correctly. Keys starting with _ are ignored. Change a right-hand spelling and run again: the affected scenes are redone automatically. If a respelling then shows up wrongly in the subtitles, fix it in caption-en.json.",
   "RAM": "ram",
   "SSD": "S S D",
   "NAND": "nand",
